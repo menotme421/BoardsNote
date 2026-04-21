@@ -3097,8 +3097,7 @@ export default function App() {
   const [activeMode, setActiveMode] = useState<'notes' | 'canvas'>('notes');
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [appFontClass, setAppFontClass] = useState('font-inter');
-  const [sidebarFixed, setSidebarFixed] = useState(false);
-  const [sidebarHovered, setSidebarHovered] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [unsavedChanges, setUnsavedChanges] = useState(false);
@@ -3197,7 +3196,7 @@ export default function App() {
       }
       if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
         e.preventDefault();
-        setSidebarHovered(prev => !prev);
+        setSidebarOpen(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -3400,7 +3399,7 @@ export default function App() {
     const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 0;
     return { wordCount, lastSaved: activeFile.updatedAt };
   }, [activeFile]);
-  const isSidebarVisible = sidebarFixed || sidebarHovered;
+  const isSidebarVisible = sidebarOpen;
 
   const renderSidebarFileItem = (f: FileItem) => (
     <div key={f.id}>
@@ -3470,33 +3469,10 @@ export default function App() {
   );
 
   return (
-    <div className={`flex h-[100dvh] w-full bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-hidden relative ${appFontClass}`}>
-      {/* Sidebar Toggle Button — slides with sidebar, always visible */}
-      <button
-        style={{
-          left: sidebarHovered ? '208px' : '12px',
-          top: '8px'
-        }}
-        className="fixed z-50 p-1.5 rounded-[var(--radius-tiny)] transition-all duration-300 ease-in-out bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-[var(--text-secondary)] hover:text-[var(--brand)] hover:border-[var(--brand)] shadow-sm no-print"
-        onClick={() => {
-          setSidebarHovered(!sidebarHovered);
-        }}
-        title={sidebarHovered ? 'Close Sidebar' : 'Open Sidebar'}
-      >
-        <PanelLeft size={16} />
-      </button>
-
-      {/* Transparent Backdrop — only in overlay mode, clicking closes sidebar */}
-      {sidebarHovered && !sidebarFixed && (
-        <div
-          className="fixed inset-0 z-30"
-          onClick={() => { setSidebarHovered(false); }}
-        />
-      )}
-
-      {/* Sidebar Panel */}
+    <div className={`app-shell bg-[var(--color-shell-bg)] ${appFontClass}`}>
+      {/* Sidebar Panel - Inset style */}
       <div
-        className={`fixed left-0 top-0 h-full z-40 flex flex-col border-r border-[var(--border-primary)] bg-[var(--bg-secondary)] transition-transform duration-300 ease-in-out no-print w-[200px] shadow-xl ${sidebarHovered ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`flex flex-col h-full app-panel bg-[var(--color-sidebar-bg)] transition-all duration-300 ease-in-out no-print overflow-hidden m-2 mr-0 ${sidebarOpen ? 'w-[200px] opacity-100' : 'w-0 opacity-0'}`}
       >
 
         {/* Mode Tabs — Symmetric padding for a centered look */}
@@ -3594,8 +3570,27 @@ export default function App() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className={`flex-grow overflow-hidden bg-[var(--bg-primary)] transition-all duration-300 ease-in-out ${sidebarHovered ? 'ml-[220px]' : 'ml-0'}`}>
+      {/* Resizer/Gap Area - 16px when sidebar open, thin hover target when closed */}
+      {sidebarOpen ? (
+        <div
+          className="sidebar-resizer w-3 bg-transparent hover:bg-[var(--color-surface-hover)] my-2"
+          onClick={() => setSidebarOpen(false)}
+          title="Close Sidebar"
+        >
+          <div className="sidebar-resizer-line" />
+        </div>
+      ) : (
+        <div
+          className="sidebar-resizer-closed absolute left-2 top-2 bottom-2 w-1 z-40 cursor-pointer hover:bg-[var(--color-surface-hover)] rounded-[var(--radius-tiny)]"
+          onClick={() => setSidebarOpen(true)}
+          title="Open Sidebar"
+        >
+          <div className="sidebar-resizer-line-closed" />
+        </div>
+      )}
+
+      {/* Main Content - Inset style */}
+      <div className="flex-grow h-full overflow-hidden bg-[var(--color-editor-bg)] app-panel m-2 ml-0">
         {showSettings ? (
           <SettingsPage appFontClass={appFontClass} onAppFontChange={setAppFontClass} />
         ) : activeFile ? (
@@ -3605,10 +3600,9 @@ export default function App() {
             <CanvasEditor key={activeFile.id} file={activeFile} updateFile={updateFile} />
           )
         ) : (
-          <div className="h-full flex flex-col items-center justify-center gap-[var(--gap-size)]">
-            <img src={boardsNoteLogo} alt="BoardsNote" className="h-34 opacity-[0.8] object-contain mx-auto" />
-            <p className="text-[var(--text-secondary)] text-[13px] font-medium mt-2">No document open</p>
-
+          <div className="h-full flex flex-col items-center justify-center gap-[var(--gap-size)] content-panel">
+            <img src={boardsNoteLogo} alt="BoardsNote" className="h-32 opacity-[0.8] object-contain mx-auto" />
+            <p className="text-[var(--text-secondary)] text-[13px] font-medium">Select a note or canvas to start</p>
           </div>
         )}
       </div>
