@@ -1,0 +1,5 @@
+{
+  "name": "InkFrame",
+  "description": "A single-file PWA prototype unifying a rich-text note editor and an infinite canvas.",
+  "requestFramePermissions": []
+}
