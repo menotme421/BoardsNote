@@ -3098,6 +3098,7 @@ export default function App() {
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [appFontClass, setAppFontClass] = useState('font-inter');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isResizerHovered, setIsResizerHovered] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [unsavedChanges, setUnsavedChanges] = useState(false);
@@ -3470,9 +3471,9 @@ export default function App() {
 
   return (
     <div className={`app-shell bg-[var(--color-shell-bg)] ${appFontClass}`}>
-      {/* Sidebar Panel - Inset style */}
+      {/* Sidebar Panel - Inset style with expanded gap on hover */}
       <div
-        className={`flex flex-col h-full app-panel bg-[var(--color-sidebar-bg)] transition-all duration-300 ease-in-out no-print overflow-hidden m-2 mr-0 ${sidebarOpen ? 'w-[200px] opacity-100' : 'w-0 opacity-0'}`}
+        className={`flex flex-col h-full app-panel bg-[var(--color-sidebar-bg)] transition-all duration-300 ease-in-out no-print overflow-hidden ${sidebarOpen ? (isResizerHovered ? 'ml-2 mr-0 w-[200px] opacity-100' : 'ml-2 mr-2 w-[200px] opacity-100') : 'ml-0 mr-0 w-0 opacity-0'}`}
       >
 
         {/* Mode Tabs — Symmetric padding for a centered look */}
@@ -3570,27 +3571,42 @@ export default function App() {
         </div>
       </div>
 
-      {/* Resizer/Gap Area - 16px when sidebar open, thin hover target when closed */}
+      {/* Resizer/Gap Area - 8px gap with shell-colored hover */}
       {sidebarOpen ? (
         <div
-          className="sidebar-resizer w-3 bg-transparent hover:bg-[var(--color-surface-hover)] my-2"
+          className="sidebar-resizer w-2 bg-transparent hover:bg-[var(--color-shell-bg)] transition-all duration-300 ease-in-out"
           onClick={() => setSidebarOpen(false)}
+          onMouseEnter={() => setIsResizerHovered(true)}
+          onMouseLeave={() => setIsResizerHovered(false)}
           title="Close Sidebar"
         >
           <div className="sidebar-resizer-line" />
         </div>
       ) : (
-        <div
-          className="sidebar-resizer-closed absolute left-2 top-2 bottom-2 w-1 z-40 cursor-pointer hover:bg-[var(--color-surface-hover)] rounded-[var(--radius-tiny)]"
-          onClick={() => setSidebarOpen(true)}
-          title="Open Sidebar"
-        >
-          <div className="sidebar-resizer-line-closed" />
-        </div>
+        <>
+          {/* Invisible hover detector at shell left edge - full height */}
+          <div
+            className="absolute left-0 top-0 bottom-0 w-2 z-50 cursor-pointer"
+            onMouseEnter={() => setIsResizerHovered(true)}
+            onMouseLeave={() => setIsResizerHovered(false)}
+            onClick={() => setSidebarOpen(true)}
+          />
+          {/* Visible trigger - conditionally rendered only when hovered */}
+          {isResizerHovered && (
+            <div
+              className="sidebar-resizer-closed absolute top-0 bottom-0 left-2 w-1 z-40 cursor-pointer hover:bg-[var(--color-shell-bg)] rounded-[var(--radius-tiny)] transition-all duration-300 opacity-100"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <div className="sidebar-resizer-line-closed opacity-100" />
+            </div>
+          )}
+        </>
       )}
 
-      {/* Main Content - Inset style */}
-      <div className="flex-grow h-full overflow-hidden bg-[var(--color-editor-bg)] app-panel m-2 ml-0">
+      {/* Main Content - Equal spacing when closed, shrinks on hover */}
+      <div
+        className={`flex-grow h-full overflow-hidden bg-[var(--color-editor-bg)] app-panel transition-all duration-300 ease-in-out ${sidebarOpen ? (isResizerHovered ? 'ml-4 mr-2' : 'ml-0 mr-2') : (isResizerHovered ? 'ml-4 mr-0' : 'ml-0 mr-0')}`}
+      >
         {showSettings ? (
           <SettingsPage appFontClass={appFontClass} onAppFontChange={setAppFontClass} />
         ) : activeFile ? (

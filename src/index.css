@@ -179,7 +179,7 @@ body {
 }
 
 .sidebar-resizer-closed:hover {
-  background-color: var(--color-surface-hover);
+  background-color: var(--color-shell-bg);
 }
 
 .sidebar-resizer-line-closed {
@@ -191,7 +191,6 @@ body {
   height: 48px;
   background-color: var(--color-accent);
   border-radius: 1px;
-  opacity: 0;
   transition: opacity 0.15s ease, height 0.2s ease;
 }
 
@@ -218,7 +217,7 @@ body {
   background: var(--color-editor-bg);
   border: 1px solid var(--color-border);
   overflow: hidden;
-  transition: all 0.15s ease;
+  transition: margin 0.3s ease, width 0.3s ease, opacity 0.3s ease;
 }
 
 .dark .app-panel {
