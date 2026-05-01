@@ -56,9 +56,12 @@ Tag colors are auto-generated from a palette of 14 colors (red, orange, amber, g
 
 #### Font Families
 
+The entire application uses a user-selectable font family. Available options:
+
 | Token | Font | Usage |
 |-------|------|-------|
-| `--font-sans` | Inter | All UI text |
+| `--font-sans` | Inter | Default UI and content text |
+| `--font-mono` | JetBrains Mono | Monospace alternative for UI and content |
 
 #### Type Scales
 

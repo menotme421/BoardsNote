@@ -140,6 +140,10 @@ body {
 .sidebar-resizer {
   position: relative;
   flex-shrink: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: width 0.3s ease, background-color 0.15s ease;
   cursor: pointer;
 }
@@ -149,21 +153,16 @@ body {
 }
 
 .sidebar-resizer-line {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   width: 2px;
   height: 48px;
   background-color: var(--brand);
   border-radius: 1px;
   opacity: 0;
-  transition: opacity 0.15s ease, height 0.2s ease;
+  transition: opacity 0.15s ease;
 }
 
 .sidebar-resizer:hover .sidebar-resizer-line {
   opacity: 1;
-  height: 64px;
 }
 
 /* Closed sidebar resizer (thin hover target on left edge) */
@@ -659,35 +658,43 @@ svg.lucide {
   table-layout: auto !important;
 }
 .prose th, .prose td {
-  border: 1px solid var(--border-primary);
-  padding: 0.25rem;
+  border: 1px solid var(--color-border);
+  padding: 6px 10px;
   text-align: left;
   transition: background-color 0.1s ease;
   overflow-wrap: anywhere;
   vertical-align: top;
 }
 .prose th {
-  background-color: var(--bg-tertiary);
+  background-color: var(--color-surface-hover);
 }
 
 /* Control paragraph spacing inside table cells */
 .prose td p,
 .prose th p {
-  margin-bottom: 0.25rem;
-  margin-top: 0.25rem;
+  margin: 0;
   line-height: 1.4;
 }
-
-.prose td p:first-child,
-.prose th p:first-child {
-  margin-top: 0;
-  padding-bottom: 0.8rem;
+.prose td p + p,
+.prose th p + p {
+  margin-top: 0.5rem;
 }
 
-.prose td p:last-child,
-.prose th p:last-child {
+/* Fix bullet lists inside table cells */
+.prose td ul, .prose th ul,
+.prose td ol, .prose th ol {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+.prose td li, .prose th li {
+  margin-bottom: 0.25rem;
+}
+.prose td li:last-child, .prose th li:last-child {
   margin-bottom: 0;
-  padding-top: 0.25rem;
+}
+.prose td li p, .prose th li p {
+  margin: 0;
+  display: inline;
 }
 
 .prose .selected-cell {
@@ -764,32 +771,171 @@ svg.lucide {
 /* Ensure drag handle is positioned correctly relative to editor */
 .drag-handle {
   position: absolute !important;
-  z-index: 10 !important;
+  z-index: 100 !important;
   pointer-events: auto !important;
 }
 
-/* Hide drag handle when inside table cells */
-.ProseMirror table .drag-handle,
-.ProseMirror td .drag-handle,
-.ProseMirror th .drag-handle,
-.prose table .drag-handle,
-.prose td .drag-handle,
-.prose th .drag-handle {
+/* Fixed drag handle - enforce visibility and override inline styles */
+.drag-handle-fixed {
+  pointer-events: auto !important;
+  visibility: visible !important;
+}
+
+.drag-handle-fixed:hover {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Container wrapper to ensure proper hover area */
+.drag-handle-wrapper {
+  pointer-events: none;
+}
+
+.drag-handle-wrapper:hover {
+  pointer-events: auto;
+}
+
+.drag-handle-wrapper .drag-handle-fixed {
+  pointer-events: auto !important;
+}
+
+/* Ensure drag handle works on ALL block types including headings and lists */
+.ProseMirror > * > .drag-handle,
+.ProseMirror li > .drag-handle,
+.ProseMirror p > .drag-handle,
+.ProseMirror h1 > .drag-handle,
+.ProseMirror h2 > .drag-handle,
+.ProseMirror h3 > .drag-handle,
+.ProseMirror blockquote > .drag-handle,
+.ProseMirror [data-node-type="heading"] > .drag-handle {
+  display: flex !important;
+  visibility: visible !important;
+}
+
+/* Specific targeting for heading blocks */
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3 {
+  position: relative;
+}
+
+.ProseMirror h1 .drag-handle,
+.ProseMirror h2 .drag-handle,
+.ProseMirror h3 .drag-handle,
+.ProseMirror h1 ~ .drag-handle,
+.ProseMirror h2 ~ .drag-handle,
+.ProseMirror h3 ~ .drag-handle {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 0.4 !important;
+}
+
+.ProseMirror h1 .drag-handle:hover,
+.ProseMirror h2 .drag-handle:hover,
+.ProseMirror h3 .drag-handle:hover,
+.ProseMirror h1 ~ .drag-handle:hover,
+.ProseMirror h2 ~ .drag-handle:hover,
+.ProseMirror h3 ~ .drag-handle:hover {
+  opacity: 1 !important;
+}
+
+/* Force all drag handles to be visible and interactive - overrides library inline styles */
+.drag-handle,
+.drag-handle-fixed,
+[data-dragging] {
+  visibility: visible !important;
+  pointer-events: auto !important;
+  display: flex !important;
+}
+
+/* Ensure drag handle doesn't disappear on hover */
+.drag-handle:hover,
+.drag-handle-fixed:hover,
+.drag-handle-component:hover {
+  visibility: visible !important;
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  display: flex !important;
+}
+
+/* Hide drag handle ONLY when inside table cells (td/th), not for the table itself */
+.ProseMirror td > .drag-handle,
+.ProseMirror th > .drag-handle,
+.ProseMirror table td > .drag-handle,
+.ProseMirror table th > .drag-handle {
   display: none !important;
 }
 
-/* Hide drag handle when selection is inside table */
-.ProseMirror-selectednode table ~ div .drag-handle,
-.ProseMirror-selectednode td ~ div .drag-handle,
-.ProseMirror-selectednode th ~ div .drag-handle {
-  display: none !important;
+/* Ensure drag handle IS visible on the table itself */
+.ProseMirror table .drag-handle:not(td .drag-handle):not(th .drag-handle) {
+  display: flex !important;
 }
 
-/* Hide any drag handle element that appears after table content */
-table + .drag-handle,
-td + .drag-handle,
-th + .drag-handle {
-  display: none !important;
+/* Table cell hover effects with branding color */
+.ProseMirror td:hover,
+.ProseMirror th:hover {
+  outline: 2px solid #ff6127;
+  outline-offset: -1px;
+}
+
+.ProseMirror td:focus-within,
+.ProseMirror th:focus-within {
+  outline: 2px solid #ff6127;
+  outline-offset: -1px;
+}
+
+/* Table wrapper for positioning edge buttons */
+.table-wrapper {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 30px;
+  margin-right: 50px;
+}
+
+/* Table edge buttons */
+.table-edge-btn {
+  position: absolute;
+  background: #ff6127;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+.table-wrapper:hover .table-edge-btn {
+  opacity: 1;
+}
+
+.table-edge-btn:hover {
+  background: #e5521f;
+  transform: scale(1.05);
+}
+
+.table-edge-btn.add-row {
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.table-wrapper:hover .table-edge-btn.add-row {
+  transform: translateX(-50%) scale(1);
+}
+
+.table-edge-btn.add-col {
+  right: -48px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.table-wrapper:hover .table-edge-btn.add-col {
+  transform: translateY(-50%) scale(1);
 }
 
 @media print {

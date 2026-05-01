@@ -86,12 +86,7 @@ Canvas is intentionally at prototype stage. The audit below defines what stays w
 
 In priority order:
 
-1. **Table — delete row/col** — in progress, finish it
-2. **Drag handle bug** — hidden inside table cells
-3. **Table cell spacing** — visual fix
-4. **Bullet list rendering inside table cells** — CSS fix
-5. **Code block** — add basic syntax highlighting
-6. **Settings — remove Sync tab** — don't show features that don't work yet
+*(All current priority tasks have been completed and shipped)*
 
 ---
 
@@ -115,14 +110,14 @@ Features that are valid ideas but explicitly deferred. Revisit after Notes is co
 
 Notes is shippable when:
 
-- [ ] Rich text works reliably (bold, italic, headings, lists, code)
-- [ ] Tables can be inserted, rows/cols added and deleted
-- [ ] Bullet lists render correctly inside table cells
-- [ ] Drag handle does not appear inside table cells
-- [ ] Code block displays monospace, no formatting bleed
-- [ ] All sidebar actions work (create, rename, delete, favourite, search)
-- [ ] Dark mode applies correctly across all surfaces
-- [ ] Design system tokens applied consistently (no legacy colors)
+- [x] Rich text works reliably (bold, italic, headings, lists, code)
+- [x] Tables can be inserted, rows/cols added and deleted
+- [x] Bullet lists render correctly inside table cells
+- [x] Drag handle does not appear inside table cells
+- [x] Code block displays monospace, no formatting bleed
+- [x] All sidebar actions work (create, rename, delete, favourite, search)
+- [x] Dark mode applies correctly across all surfaces
+- [x] Design system tokens applied consistently (no legacy colors)
 
 ---
 

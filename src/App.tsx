@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import boardsNoteLogo from './assets/BoardsNote_brand.png';
 import TurndownService from 'turndown';
 // @ts-ignore
@@ -24,7 +25,9 @@ import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
+import { Node, mergeAttributes } from '@tiptap/core';
 import ListItem from '@tiptap/extension-list-item';
+import { CustomCodeBlockLowlight } from './components/code-block';
 
 function remarkEscapeHtml() {
   return (tree: any) => {
@@ -33,6 +36,7 @@ function remarkEscapeHtml() {
     });
   };
 }
+
 import { CanvasToolbar } from './components/CanvasToolbar';
 import { StickyNote } from './components/nodes/StickyNote';
 import { TextBlock } from './components/nodes/TextBlock';
@@ -47,7 +51,7 @@ import {
   Quote, Minus, Table as TableIcon, Image as ImageIcon,
   Calculator, MousePointer2, Hand, Square,
   Circle, Type, GitMerge, Eraser, Network,
-  ChevronRight, MoreVertical, Folder,
+  ChevronRight, MoreVertical, Folder, Ellipsis,
   Pilcrow, SeparatorHorizontal, SquareCode, Grid2x2, Link2,
   Sun, Moon, Settings, Cloud, Star,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
@@ -72,10 +76,7 @@ interface FileItem {
 
 const FONT_OPTIONS = [
   { label: 'Default', name: 'Inter', value: 'font-inter' },
-  { label: 'Professional', name: 'Source Serif 4', value: 'font-source-serif' },
-  { label: 'Literary', name: 'Lora', value: 'font-lora' },
   { label: 'Technical', name: 'JetBrains Mono', value: 'font-jetbrains' },
-  { label: 'Focus', name: 'Atkinson Hyperlegible', value: 'font-atkinson' },
 ];
 
 const NOTE_SLASH_COMMANDS = [
@@ -94,6 +95,7 @@ const NOTE_SLASH_COMMANDS = [
 const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, updateFile: any, appFontClass: string, key?: string }) => {
   const [slashOpen, setSlashOpen] = useState(false);
   const [slashQuery, setSlashQuery] = useState('');
+  const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
   const [slashPos, setSlashPos] = useState({ top: 0, left: 0 });
   const [slashRange, setSlashRange] = useState<{ from: number, to: number } | null>(null);
   const [linkPromptOpen, setLinkPromptOpen] = useState(false);
@@ -102,24 +104,44 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
   const [isScrolling, setIsScrolling] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [forceHide, setForceHide] = useState(false);
+  const [justFinishedDragging, setJustFinishedDragging] = useState(false);
+  const [tableMenuOpen, setTableMenuOpen] = useState(false);
+  const tableMenuOpenRef = useRef(false);
+  const [tableControlPos, setTableControlPos] = useState<{ top: number; left: number } | null>(null);
+  const activeTableElRef = useRef<HTMLElement | null>(null);
+  const tableMenuRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<any>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const filteredSlash = NOTE_SLASH_COMMANDS.filter((c) => c.label.toLowerCase().includes(slashQuery) || c.id.includes(slashQuery));
+  const textColorOptions = [
+    { id: 'default', label: 'Default', color: '#111111' },
+    { id: 'red', label: 'Red', color: '#dc2626' },
+    { id: 'blue', label: 'Blue', color: '#2563eb' },
+  ];
+  const highlightOptions = [
+    { id: 'default', label: 'Default', color: 'transparent' },
+    { id: 'red', label: 'Red', color: '#fecaca' },
+    { id: 'yellow', label: 'Yellow', color: '#fef08a' },
+    { id: 'green', label: 'Green', color: '#bbf7d0' },
+    { id: 'blue', label: 'Blue', color: '#bfdbfe' },
+  ];
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
         listItem: false,
+        codeBlock: false,
       }),
+      CustomCodeBlockLowlight,
       ListItem.extend({
         draggable: true,
       }),
-      UnderlineExtension,
       TextStyle,
       Color,
       Highlight.configure({ multicolor: true }),
-      Link.configure({ openOnClick: false, autolink: true }),
       Placeholder.configure({ placeholder: 'Start typing…' }),
       Image,
       Table.configure({ resizable: true }),
@@ -138,13 +160,43 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
           return false;
         },
         dragend: () => {
-          setTimeout(() => setIsDragging(false), 100);
+          setTimeout(() => {
+            setIsDragging(false);
+            setJustFinishedDragging(true);
+            setTimeout(() => setJustFinishedDragging(false), 500);
+          }, 100);
           return false;
         },
         drop: () => {
-          setTimeout(() => setIsDragging(false), 100);
+          setTimeout(() => {
+            setIsDragging(false);
+            setJustFinishedDragging(true);
+            setTimeout(() => setJustFinishedDragging(false), 500);
+          }, 100);
           return false;
         },
+        contextmenu: (view, event) => {
+          return false;
+        },
+        // mouseover: (view, event) => {
+        //   const target = event.target as HTMLElement;
+        //   const table = target.closest('table');
+        //   if (table && view.dom.contains(table)) {
+        //     const tablePos = view.posAtDOM(table, 0);
+        //     const rect = table.getBoundingClientRect();
+        //     setHoveredTablePos({ pos: tablePos, rect });
+        //   } else {
+        //     setHoveredTablePos(null);
+        //   }
+        //   return false;
+        // },
+        // mouseleave: (view, event) => {
+        //   const target = event.target as HTMLElement;
+        //   if (target.tagName === 'TABLE') {
+        //     setHoveredTablePos(null);
+        //   }
+        //   return false;
+        // },
       },
     },
     onUpdate: ({ editor }) => {
@@ -164,13 +216,16 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
         const query = match[1] || '';
         const start = from - (query.length + 1);
         const coords = view.coordsAtPos(from);
-        setSlashQuery(query.toLowerCase());
-        setSlashRange({ from: start, to: from });
-        setSlashPos({ top: coords.bottom, left: coords.left });
-        setSlashOpen(true);
-        setFormatMenuOpen(false);
-        setTurnMenuOpen(false);
-        setLinkPromptOpen(false);
+        if (coords) {
+          setSlashQuery(query.toLowerCase());
+          setSlashSelectedIndex(0);
+          setSlashRange({ from: start, to: from });
+          setSlashPos({ top: coords.bottom, left: coords.left });
+          setSlashOpen(true);
+          setFormatMenuOpen(false);
+          setTurnMenuOpen(false);
+          setLinkPromptOpen(false);
+        }
       } else {
         setSlashOpen(false);
         setSlashRange(null);
@@ -179,6 +234,33 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
           setFormatMenuOpen(false);
           setTurnMenuOpen(false);
         }
+      }
+
+      // Track active table DOM element for the always-visible table controls
+      const $from = state.selection.$from;
+      let foundTable: HTMLElement | null = null;
+      for (let d = $from.depth; d >= 0; d--) {
+        const nodeAtDepth = $from.node(d);
+        if (nodeAtDepth.type.name === 'table') {
+          try {
+            const startPos = $from.start(d);
+            const dom = view.nodeDOM(startPos) as HTMLElement | null;
+            if (dom) {
+              foundTable = dom.tagName === 'TABLE' ? dom : (dom.querySelector('table') || dom);
+            }
+          } catch (_) {}
+          break;
+        }
+      }
+      activeTableElRef.current = foundTable;
+      if (foundTable) {
+        const rect = foundTable.getBoundingClientRect();
+        setTableControlPos({ top: rect.top, left: rect.right });
+      } else if (!tableMenuOpenRef.current) {
+        // Only hide the controls if the dropdown is not open
+        // (clicking the ellipsis button moves focus outside the editor)
+        setTableControlPos(null);
+        setTableMenuOpen(false);
       }
     },
   });
@@ -193,17 +275,54 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
       setTurnMenuOpen(false);
       setLinkPromptOpen(false);
       setForceHide(true);
-      
+
       setIsScrolling(true);
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
       scrollTimeoutRef.current = setTimeout(() => {
         setIsScrolling(false);
       }, 150);
+
+      // Keep table control in sync with scrolled position
+      if (activeTableElRef.current) {
+        const rect = activeTableElRef.current.getBoundingClientRect();
+        setTableControlPos({ top: rect.top, left: rect.right });
+      }
     };
 
     scrollEl.addEventListener('scroll', handleScroll, { passive: true });
     return () => scrollEl.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Enforce drag handle visibility - prevent it from disappearing
+  useEffect(() => {
+    if (!editor) return;
+    
+    const enforceDragHandleVisibility = () => {
+      const dragHandles = document.querySelectorAll('.drag-handle-fixed, .drag-handle');
+      dragHandles.forEach(handle => {
+        // Force visibility
+        (handle as HTMLElement).style.visibility = 'visible';
+        (handle as HTMLElement).style.pointerEvents = 'auto';
+        (handle as HTMLElement).style.opacity = '0.4';
+      });
+    };
+
+    // Run immediately and periodically
+    enforceDragHandleVisibility();
+    const interval = setInterval(enforceDragHandleVisibility, 500);
+
+    // Also run on mousemove to catch hover states
+    const handleMouseMove = () => {
+      enforceDragHandleVisibility();
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove, { passive: true });
+    
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [editor]);
 
   useEffect(() => {
     const handleGlobalScroll = () => {
@@ -222,6 +341,53 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
     window.addEventListener('scroll', handleGlobalScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleGlobalScroll);
   }, []);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (tableMenuRef.current && !tableMenuRef.current.contains(e.target as HTMLElement)) {
+        setTableMenuOpen(false);
+        tableMenuOpenRef.current = false;
+      }
+      // Hide table controls when clicking outside both the menu and the active table
+      if (activeTableElRef.current && tableControlPos) {
+        const tableRect = activeTableElRef.current.getBoundingClientRect();
+        const x = (e as MouseEvent).clientX;
+        const y = (e as MouseEvent).clientY;
+        const inTable = x >= tableRect.left && x <= tableRect.right && y >= tableRect.top && y <= tableRect.bottom;
+        const inMenu = tableMenuRef.current?.contains(e.target as HTMLElement) ?? false;
+        if (!inTable && !inMenu) {
+          setTableControlPos(null);
+          activeTableElRef.current = null;
+        }
+      }
+    };
+    document.addEventListener('click', handleClick, true);
+    return () => document.removeEventListener('click', handleClick, true);
+  }, [tableControlPos]);
+
+  useEffect(() => {
+    if (!slashOpen) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key)) return;
+      
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (e.key === 'ArrowDown') {
+        setSlashSelectedIndex(prev => (prev + 1) % filteredSlash.length);
+      } else if (e.key === 'ArrowUp') {
+        setSlashSelectedIndex(prev => (prev - 1 + filteredSlash.length) % filteredSlash.length);
+      } else if (e.key === 'Enter') {
+        if (filteredSlash.length > 0) {
+          runSlashCommand(filteredSlash[slashSelectedIndex].id);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [slashOpen, filteredSlash, slashSelectedIndex]);
 
   useEffect(() => {
     if (!editor) return;
@@ -271,20 +437,6 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
     setSlashOpen(false);
   };
 
-  const filteredSlash = NOTE_SLASH_COMMANDS.filter((c) => c.label.toLowerCase().includes(slashQuery) || c.id.includes(slashQuery));
-  const textColorOptions = [
-    { id: 'default', label: 'Default', color: '#111111' },
-    { id: 'red', label: 'Red', color: '#dc2626' },
-    { id: 'blue', label: 'Blue', color: '#2563eb' },
-  ];
-  const highlightOptions = [
-    { id: 'default', label: 'Default', color: 'transparent' },
-    { id: 'red', label: 'Red', color: '#fecaca' },
-    { id: 'yellow', label: 'Yellow', color: '#fef08a' },
-    { id: 'green', label: 'Green', color: '#bbf7d0' },
-    { id: 'blue', label: 'Blue', color: '#bfdbfe' },
-  ];
-
   if (!editor) return null;
 
   const calculateSlashPosition = () => {
@@ -326,7 +478,7 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
             />
 
             <BubbleMenu editor={editor} shouldShow={({ editor }) => {
-              if (isScrolling || isDragging || forceHide) return false;
+              if (isScrolling || isDragging || justFinishedDragging || forceHide) return false;
               const { state } = editor;
               const { selection } = state;
               const { empty } = selection;
@@ -440,19 +592,55 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
               </div>
             </BubbleMenu>
 
-            <div className="group">
+
+
+            <div className="drag-handle-container relative min-h-[100px]">
               <EditorContent editor={editor} />
-              <DragHandle
-                editor={editor}
-                nested={true}
-                tippyOptions={{
-                  offset: [-48, 0],
-                  zIndex: 10002,
-                }}
-                className="opacity-0 group-hover:opacity-100 transition-all duration-150 w-8 h-8 flex items-center justify-center text-[#c0c0c0] hover:text-[#909090] cursor-grab active:cursor-grabbing bg-transparent border-none shadow-none"
-              >
-                <span className="text-lg leading-none select-none">⠿</span>
-              </DragHandle>
+              <div className="drag-handle-wrapper absolute left-0 top-0 w-full h-full pointer-events-none">
+                <DragHandle
+                  editor={editor}
+                  nested={{
+                    rules: [
+                      {
+                        id: 'excludeTableContent',
+                        evaluate: ({ node, $pos }) => {
+                          // Allow the table itself
+                          if (node.type.name === 'table') {
+                            return 0; // Allow table container
+                          }
+                          
+                          // Exclude tableRow, tableCell, tableHeader
+                          if (['tableRow', 'tableCell', 'tableHeader'].includes(node.type.name)) {
+                            return 1000; // Exclude table children
+                          }
+                          
+                          // Walk up ancestors to find table-related nodes (excluding table itself)
+                          let depth = $pos.depth;
+                          while (depth >= 0) {
+                            const ancestor = $pos.node(depth);
+                            if (['tableRow', 'tableCell', 'tableHeader'].includes(ancestor.type.name)) {
+                              return 1000; // Exclude nodes inside table elements
+                            }
+                            depth--;
+                          }
+                          return 0; // Allow this node
+                        }
+                      }
+                    ]
+                  }}
+                  computePositionConfig={{
+                    middleware: [
+                      {
+                        name: 'offset',
+                        fn: ({ x, y }) => ({ x: x - 40, y }),
+                      }
+                    ]
+                  }}
+                  className="drag-handle-fixed opacity-40 hover:opacity-100 !pointer-events-auto !visible transition-opacity duration-150 w-8 h-6 flex items-center justify-center text-[#909090] hover:text-[#606060] cursor-grab active:cursor-grabbing bg-transparent border-none shadow-none z-[100]"
+                >
+                  <span className="text-base leading-none select-none">⠿</span>
+                </DragHandle>
+              </div>
             </div>
           </div>
         </div>
@@ -460,19 +648,20 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
 
       {slashOpen && (
         <div 
-          className="fixed z-[9999] w-60 bg-white border border-[#e0e0e0] rounded-[2px] py-1 shadow-[0_2px_8px_rgba(0,0,0,0.10)]" 
+          className="fixed z-[9999] w-60 bg-[var(--color-shell-bg)] border border-[var(--color-border)] rounded-[2px] py-1 shadow-xl" 
           style={{ top: slashPosition.top, left: slashPosition.left }}
         >
-          <div className="px-3 py-1.5 text-[10px] uppercase text-[#999999] font-medium tracking-tight border-b border-[#f0f0f0] mb-1">Commands</div>
-          {filteredSlash.map((item) => (
+          <div className="px-3 py-1.5 text-[10px] text-[var(--color-text-muted)] font-medium tracking-tight border-b border-[var(--color-border)] mb-1">Commands</div>
+          {filteredSlash.map((item, index) => (
             <button
               key={item.id}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-[#f9f9f9] flex items-center gap-3 text-[#333333] transition-all relative group/item"
+              className={`w-full px-3 py-2 text-left text-sm flex items-center gap-3 transition-all relative group/item ${slashSelectedIndex === index ? 'bg-[var(--color-surface-hover)]' : 'hover:bg-[var(--color-surface-hover)]'}`}
               onClick={() => runSlashCommand(item.id)}
+              onMouseEnter={() => setSlashSelectedIndex(index)}
             >
-              <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[#ff6127] opacity-0 group-hover/item:opacity-100 transition-opacity" />
-              <span className="text-[#999999] w-5 flex items-center justify-center group-hover/item:text-[#ff6127] transition-colors">{item.icon}</span>
-              <span className="group-hover/item:text-[#111111] transition-colors">{item.label}</span>
+              <div className={`absolute left-0 top-0 bottom-0 w-0.5 bg-[var(--color-accent)] transition-opacity ${slashSelectedIndex === index ? 'opacity-100' : 'opacity-0 group-hover/item:opacity-100'}`} />
+              <span className={`w-5 flex items-center justify-center transition-colors ${slashSelectedIndex === index ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)] group-hover/item:text-[var(--color-accent)]'}`}>{item.icon}</span>
+              <span className={`transition-colors ${slashSelectedIndex === index ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-primary)] group-hover/item:text-[var(--color-text-primary)]'}`}>{item.label}</span>
             </button>
           ))}
         </div>
@@ -484,6 +673,70 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
           <button className="px-2 py-1 text-xs border border-[var(--border-secondary)] rounded hover:bg-[var(--bg-secondary)] text-[var(--text-primary)]" onClick={() => applyLinkMode('embed')}>Embed</button>
         </div>
       )}
+
+      {/* Always-visible table controls — positioned above the table (outside table cells) */}
+      {tableControlPos && editorContainerRef.current && createPortal(
+        <div
+          ref={tableMenuRef}
+          style={{
+            position: 'fixed',
+            top: tableControlPos.top - 28,
+            left: tableControlPos.left - 22,
+            zIndex: 10002,
+          }}
+        >
+          {/* Ellipsis trigger — no background, always visible */}
+          <button
+            className="flex items-center justify-center w-6 h-6 rounded-[var(--radius-tiny)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+            onClick={(e) => { e.stopPropagation(); setTableMenuOpen(v => !v); }}
+            title="Table options"
+          >
+            <Ellipsis size={14} />
+          </button>
+
+          {/* Dropdown */}
+          {tableMenuOpen && (
+            <div
+              className="absolute right-0 mt-0.5 w-40 bg-[var(--color-shell-bg)] border border-[var(--color-border)] rounded-[var(--radius-tiny)] py-1 shadow-[0_2px_8px_rgba(0,0,0,0.10)]"
+              style={{ top: '100%' }}
+            >
+              <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-medium">
+                Add
+              </div>
+              <button
+                className="w-full px-3 py-1.5 text-left text-[13px] flex items-center gap-2 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] transition-colors"
+                onMouseDown={(e) => { e.preventDefault(); editor.chain().addRowAfter().run(); setTableMenuOpen(false); }}
+              >
+                <Plus size={12} className="text-[var(--color-text-muted)]" /> Row below
+              </button>
+              <button
+                className="w-full px-3 py-1.5 text-left text-[13px] flex items-center gap-2 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] transition-colors"
+                onMouseDown={(e) => { e.preventDefault(); editor.chain().addColumnAfter().run(); setTableMenuOpen(false); }}
+              >
+                <Plus size={12} className="text-[var(--color-text-muted)]" /> Column right
+              </button>
+              <div className="h-px bg-[var(--color-border)] my-1" />
+              <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-medium">
+                Delete
+              </div>
+              <button
+                className="w-full px-3 py-1.5 text-left text-[13px] flex items-center gap-2 hover:bg-red-500/10 text-red-500 transition-colors"
+                onMouseDown={(e) => { e.preventDefault(); editor.chain().deleteRow().run(); setTableMenuOpen(false); }}
+              >
+                <Trash2 size={12} /> Current row
+              </button>
+              <button
+                className="w-full px-3 py-1.5 text-left text-[13px] flex items-center gap-2 hover:bg-red-500/10 text-red-500 transition-colors"
+                onMouseDown={(e) => { e.preventDefault(); editor.chain().deleteColumn().run(); setTableMenuOpen(false); }}
+              >
+                <Trash2 size={12} /> Current column
+              </button>
+            </div>
+          )}
+        </div>,
+        editorContainerRef.current
+      )}
+
     </div>
   );
 };
@@ -2704,8 +2957,7 @@ const SHORTCUTS = [
 ];
 
 const SettingsPage = ({ appFontClass, onAppFontChange }: { appFontClass: string, onAppFontChange: (value: string) => void }) => {
-  const [linkedProvider, setLinkedProvider] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'preferences' | 'cloud' | 'shortcuts'>('preferences');
+  const [activeTab, setActiveTab] = useState<'preferences' | 'shortcuts'>('preferences');
   const [shortcutSearch, setShortcutSearch] = useState('');
 
   const filteredShortcuts = SHORTCUTS.filter(s =>
@@ -2726,12 +2978,6 @@ const SettingsPage = ({ appFontClass, onAppFontChange }: { appFontClass: string,
             onClick={() => setActiveTab('preferences')}
           >
             Preferences (early access)
-          </button>
-          <button
-            className={`pb-2 px-1 text-[13px] font-medium transition-colors border-b-2 ${activeTab === 'cloud' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-            onClick={() => setActiveTab('cloud')}
-          >
-            Cloud Sync
           </button>
           <button
             className={`pb-2 px-1 text-[13px] font-medium transition-colors border-b-2 ${activeTab === 'shortcuts' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
@@ -2777,69 +3023,6 @@ const SettingsPage = ({ appFontClass, onAppFontChange }: { appFontClass: string,
                 </p>
               </div>
             </section>
-          ) : activeTab === 'cloud' ? (
-            /* Cloud Sync Section */
-            <section className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <div className="flex items-center gap-2 mb-4">
-                <Cloud className="text-[var(--text-secondary)]" size={20} />
-                <h2 className="text-2xl font-semibold">Cloud Sync</h2>
-              </div>
-              <p className="text-[var(--text-secondary)] mb-6 text-sm leading-relaxed">
-                Link your cloud storage account to enable cross-device synchronization.
-                Your notes and canvases will be securely backed up and available anywhere.
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {['Google Drive', 'Dropbox', 'OneDrive', 'iCloud'].map(provider => (
-                  <div
-                    key={provider}
-                    className={`border rounded-lg p-4 flex items-center justify-between transition-colors ${linkedProvider === provider
-                      ? 'border-[var(--text-primary)] bg-[var(--bg-secondary)]'
-                      : 'border-[var(--border-primary)] hover:border-[var(--border-secondary)]'
-                      }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded bg-[var(--bg-tertiary)] flex items-center justify-center">
-                        <Cloud size={16} className="text-[var(--text-secondary)]" />
-                      </div>
-                      <span className="font-medium">{provider}</span>
-                    </div>
-
-                    {linkedProvider === provider ? (
-                      <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-500 text-sm font-medium">
-                        <CheckCircle2 size={16} />
-                        Linked
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setLinkedProvider(provider)}
-                        className="px-3 py-1.5 text-xs font-medium bg-[var(--bg-tertiary)] hover:bg-[var(--border-primary)] rounded transition-colors"
-                      >
-                        Link Account
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {linkedProvider && (
-                <div className="mt-6 p-4 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg flex items-start gap-3">
-                  <CheckCircle2 className="text-emerald-600 dark:text-emerald-500 shrink-0 mt-0.5" size={18} />
-                  <div>
-                    <h3 className="font-medium text-sm mb-1">Sync is active</h3>
-                    <p className="text-xs text-[var(--text-secondary)]">
-                      Your files are currently syncing with {linkedProvider}. Last synced just now.
-                    </p>
-                    <button
-                      onClick={() => setLinkedProvider(null)}
-                      className="mt-3 text-xs text-red-500 hover:text-red-600 font-medium"
-                    >
-                      Disconnect
-                    </button>
-                  </div>
-                </div>
-              )}
-            </section>
           ) : (
             /* Keyboard Shortcuts Section */
             <section className="animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -2849,43 +3032,43 @@ const SettingsPage = ({ appFontClass, onAppFontChange }: { appFontClass: string,
                 </div>
 
                 <div className="relative w-full sm:w-64">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" />
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
                   <input
                     type="text"
                     placeholder="Search shortcuts..."
                     value={shortcutSearch}
                     onChange={(e) => setShortcutSearch(e.target.value)}
-                    className="w-full bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-full pl-9 pr-4 py-1.5 text-sm outline-none focus:border-[var(--border-secondary)] transition-colors"
+                    className="w-full bg-[var(--color-shell-bg)] border border-[var(--color-border)] rounded-full pl-9 pr-4 py-1.5 text-sm outline-none focus:border-[var(--color-accent)] transition-colors"
                   />
                 </div>
               </div>
 
-              <div className="border border-[var(--border-primary)] rounded-lg overflow-hidden bg-[var(--bg-secondary)]">
-                <div className="grid grid-cols-3 bg-[var(--bg-tertiary)] border-b border-[var(--border-primary)] p-3 text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
+              <div className="border border-[var(--color-border)] rounded-lg overflow-hidden bg-[var(--color-editor-bg)]">
+                <div className="grid grid-cols-3 bg-[var(--color-shell-bg)] border-b border-[var(--color-border)] p-3 text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
                   <div>Action</div>
                   <div>Windows / Linux</div>
                   <div>macOS</div>
                 </div>
 
-                <div className="divide-y divide-[var(--border-primary)]">
+                <div className="divide-y divide-[var(--color-border)]">
                   {filteredShortcuts.length > 0 ? (
                     filteredShortcuts.map((shortcut, idx) => (
-                      <div key={idx} className="grid grid-cols-3 p-3 items-center hover:bg-[var(--bg-tertiary)] transition-colors">
-                        <div className="text-sm font-medium">{shortcut.action}</div>
+                      <div key={idx} className="grid grid-cols-3 p-3 items-center hover:bg-[var(--color-surface-hover)] transition-colors">
+                        <div className="text-sm font-medium text-[var(--color-text-primary)]">{shortcut.action}</div>
                         <div>
-                          <kbd className="px-2 py-1 bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded text-xs font-mono text-[var(--text-secondary)]">
+                          <kbd className="px-2 py-1 bg-[var(--color-editor-bg)] border border-[var(--color-border)] rounded text-xs font-mono text-[var(--color-text-muted)]">
                             {shortcut.win}
                           </kbd>
                         </div>
                         <div>
-                          <kbd className="px-2 py-1 bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded text-xs font-mono text-[var(--text-secondary)]">
+                          <kbd className="px-2 py-1 bg-[var(--color-editor-bg)] border border-[var(--color-border)] rounded text-xs font-mono text-[var(--color-text-muted)]">
                             {shortcut.mac}
                           </kbd>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="p-8 text-center text-[var(--text-secondary)] text-sm">
+                    <div className="p-8 text-center text-[var(--color-text-muted)] text-sm">
                       No shortcuts found for "{shortcutSearch}"
                     </div>
                   )}
@@ -2992,7 +3175,7 @@ const HelpWidget = ({
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (widgetRef.current && !widgetRef.current.contains(e.target as Node)) {
+      if (widgetRef.current && !widgetRef.current.contains(e.target as HTMLElement)) {
         setIsOpen(false);
       }
     };
@@ -3111,6 +3294,7 @@ export default function App() {
   const [taggingFileId, setTaggingFileId] = useState<string | null>(null);
   const [newTag, setNewTag] = useState('');
   const [filesToDelete, setFilesToDelete] = useState<FileItem[] | null>(null);
+  const [openFileMenuId, setOpenFileMenuId] = useState<string | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
@@ -3179,10 +3363,21 @@ export default function App() {
       const timer = setTimeout(() => {
         localStorage.setItem('inkframe_files', JSON.stringify(files));
         setUnsavedChanges(false);
-      }, 3000);
+      }, 1000);
       return () => clearTimeout(timer);
     }
   }, [files, unsavedChanges]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.file-menu-dropdown')) {
+        setOpenFileMenuId(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -3265,7 +3460,7 @@ export default function App() {
       .map(f => (
         <div key={f.id}>
           <div
-            className={`flex flex-col px-2 py-1.5 cursor-pointer rounded group relative transition-colors ${activeFileId === f.id && !showSettings ? 'bg-[var(--brand-subtle)] text-[var(--brand)]' : 'hover:bg-[var(--bg-tertiary)]'}`}
+            className={`flex flex-col px-2 py-1.5 cursor-pointer rounded group relative transition-colors ${activeFileId === f.id && !showSettings ? 'bg-[var(--color-accent-tint)] text-[var(--color-accent)]' : 'hover:bg-[var(--color-surface-hover)]'}`}
             onClick={() => {
               if (isSelectionMode) {
                 toggleSelection(f.id);
@@ -3280,17 +3475,17 @@ export default function App() {
             <div className="flex items-center justify-between">
               <div className="flex items-center overflow-hidden flex-1">
                 {isSelectionMode && (
-                  <div className="mr-2 flex items-center justify-center w-4 h-4 rounded border border-[var(--border-primary)] shrink-0">
-                    {selectedFileIds.has(f.id) && <CheckSquare size={14} className="text-[var(--text-primary)]" />}
+                  <div className="mr-2 flex items-center justify-center w-4 h-4 rounded border border-[var(--color-border)] shrink-0">
+                    {selectedFileIds.has(f.id) && <CheckSquare size={14} className="text-[var(--color-text-primary)]" />}
                   </div>
                 )}
                 <span className="mr-2 text-sm shrink-0 flex items-center justify-center">
-                  {f.type === 'folder' ? (f.isOpen ? '📂' : '📁') : f.type === 'note' ? <FileText size={14} /> : <LayoutGrid size={14} />}
+                  {f.type === 'folder' ? (f.isOpen ? <ChevronRight size={14} className="rotate-90" /> : <ChevronRight size={14} />) : f.type === 'note' ? <FileText size={14} /> : <LayoutGrid size={14} />}
                 </span>
                 {editingFileId === f.id ? (
                   <input
                     autoFocus
-                    className="flex-1 bg-transparent border-b border-[var(--border-primary)] outline-none text-sm text-[var(--text-primary)] min-w-0"
+                    className="flex-1 bg-transparent border-b border-[var(--color-border)] outline-none text-sm text-[var(--color-text-primary)] min-w-0"
                     value={editingTitle}
                     onChange={e => setEditingTitle(e.target.value)}
                     onBlur={() => {
@@ -3308,7 +3503,7 @@ export default function App() {
                     onClick={e => e.stopPropagation()}
                   />
                 ) : (
-                  <span className={`text-[13px] truncate ${activeFileId === f.id && !showSettings ? 'text-[var(--brand)] font-medium' : 'text-[var(--text-primary)]'}`}>{f.title || 'Untitled'}</span>
+                  <span className={`text-[13px] truncate ${activeFileId === f.id && !showSettings ? 'text-[var(--color-accent)] font-medium' : 'text-[var(--color-text-primary)]'}`}>{f.title || 'Untitled'}</span>
                 )}
               </div>
 
@@ -3316,21 +3511,21 @@ export default function App() {
                 {!isSelectionMode && (
                   <>
                     <button
-                      className="p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border-primary)] rounded"
+                      className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-border)] rounded"
                       onClick={(e) => { e.stopPropagation(); setEditingFileId(f.id); setEditingTitle(f.title); }}
                       title="Rename"
                     >
                       <Edit2 size={12} />
                     </button>
                     <button
-                      className="p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border-primary)] rounded"
+                      className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-border)] rounded"
                       onClick={(e) => { e.stopPropagation(); setTaggingFileId(taggingFileId === f.id ? null : f.id); setNewTag(''); }}
                       title="Tags"
                     >
                       <Tag size={12} />
                     </button>
                     <button
-                      className="p-1 text-[var(--text-secondary)] hover:text-red-500 hover:bg-red-500/10 rounded"
+                      className="p-1 text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded"
                       onClick={(e) => { e.stopPropagation(); setFilesToDelete([f]); }}
                       title="Delete"
                     >
@@ -3402,78 +3597,154 @@ export default function App() {
   }, [activeFile]);
   const isSidebarVisible = sidebarOpen;
 
-  const renderSidebarFileItem = (f: FileItem) => (
-    <div key={f.id}>
+  const FileMenuDropdown = ({ file, buttonRef }: { file: FileItem, buttonRef: React.RefObject<HTMLButtonElement | null> }) => {
+    const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+    const isMounted = useRef(false);
+
+    useEffect(() => {
+      const handleScroll = () => {
+        setOpenFileMenuId(null);
+      };
+      window.addEventListener('scroll', handleScroll, true);
+      return () => window.removeEventListener('scroll', handleScroll, true);
+    }, []);
+
+    useEffect(() => {
+      isMounted.current = true;
+      const updatePosition = () => {
+        if (buttonRef.current && isMounted.current) {
+          const rect = buttonRef.current.getBoundingClientRect();
+          const dropdownWidth = 144; // w-36 = 9rem = 144px
+          const dropdownHeight = 120; // Approximate height
+          const padding = 8;
+
+          // Position dropdown below and aligned to right edge of button
+          let left = rect.right - dropdownWidth;
+          let top = rect.bottom + padding;
+
+          // Ensure dropdown stays within viewport
+          if (left < padding) left = padding;
+          if (left + dropdownWidth > window.innerWidth - padding) {
+            left = rect.left;
+          }
+          if (top + dropdownHeight > window.innerHeight - padding) {
+            top = rect.top - dropdownHeight - padding;
+          }
+
+          setPosition({ top, left });
+        }
+      };
+      // Small delay to ensure button is rendered
+      const timer = setTimeout(updatePosition, 0);
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
+      return () => {
+        isMounted.current = false;
+        clearTimeout(timer);
+        window.removeEventListener('scroll', updatePosition, true);
+        window.removeEventListener('resize', updatePosition);
+      };
+    }, [buttonRef]);
+
+    if (!position) return null;
+
+    return createPortal(
       <div
-        className={`flex flex-col px-2 py-1.5 cursor-pointer rounded group relative transition-colors ${activeFileId === f.id && !showSettings ? 'bg-[var(--brand-subtle)] text-[var(--brand)]' : 'hover:bg-[var(--bg-tertiary)]'}`}
-        onClick={() => {
-          setActiveFileId(f.id);
-          setShowSettings(false);
-        }}
+        className="file-menu-dropdown fixed z-[100] w-36 bg-[var(--color-shell-bg)] border border-[var(--color-border)] rounded-lg shadow-xl py-1"
+        style={{ top: position?.top ?? 0, left: position?.left ?? 0 }}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center overflow-hidden flex-1">
-            <span className="mr-2 text-sm shrink-0 flex items-center justify-center">
-              {f.type === 'note' ? <FileText size={14} /> : <LayoutGrid size={14} />}
-            </span>
-            {editingFileId === f.id ? (
-              <input
-                autoFocus
-                className="flex-1 bg-transparent border-b border-[var(--border-primary)] outline-none text-sm text-[var(--text-primary)] min-w-0"
-                value={editingTitle}
-                onChange={e => setEditingTitle(e.target.value)}
-                onBlur={() => {
-                  if (editingTitle.trim()) updateFile(f.id, { title: editingTitle.trim() });
-                  setEditingFileId(null);
-                }}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
+        <button
+          className="w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 hover:bg-[var(--color-surface-hover)] transition-colors"
+          onClick={(e) => { e.stopPropagation(); updateFile(file.id, { isPinned: !file.isPinned }); setOpenFileMenuId(null); }}
+        >
+          <Star size={12} className={file.isPinned ? 'text-amber-500 fill-current' : 'text-[var(--color-text-muted)]'} />
+          <span className="text-[var(--color-text-primary)]">{file.isPinned ? 'Unfavourite' : 'Favourite'}</span>
+        </button>
+        <button
+          className="w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 hover:bg-[var(--color-surface-hover)] transition-colors"
+          onClick={(e) => { e.stopPropagation(); setEditingFileId(file.id); setEditingTitle(file.title); setOpenFileMenuId(null); }}
+        >
+          <Edit2 size={12} className="text-[var(--color-text-muted)]" />
+          <span className="text-[var(--color-text-primary)]">Rename</span>
+        </button>
+        <button
+          className="w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 hover:bg-red-500/10 transition-colors"
+          onClick={(e) => { e.stopPropagation(); setFilesToDelete([file]); setOpenFileMenuId(null); }}
+        >
+          <Trash2 size={12} className="text-red-500" />
+          <span className="text-red-500">Delete</span>
+        </button>
+      </div>,
+      document.body
+    );
+  };
+
+  const SidebarFileItem = ({ f }: { f: FileItem }) => {
+    const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+    return (
+      <div key={f.id}>
+        <div
+          className={`flex flex-col px-2 py-1.5 cursor-pointer rounded group relative transition-colors ${activeFileId === f.id && !showSettings ? 'bg-[var(--color-accent-tint)] text-[var(--color-accent)]' : 'hover:bg-[var(--color-surface-hover)]'}`}
+          onClick={() => {
+            setActiveFileId(f.id);
+            setShowSettings(false);
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center overflow-hidden flex-1">
+              <span className="mr-2 text-sm shrink-0 flex items-center justify-center">
+                {f.type === 'note' ? <FileText size={14} /> : <LayoutGrid size={14} />}
+              </span>
+              {editingFileId === f.id ? (
+                <input
+                  autoFocus
+                  className="flex-1 bg-transparent border-b border-[var(--color-border)] outline-none text-sm text-[var(--color-text-primary)] min-w-0"
+                  value={editingTitle}
+                  onChange={e => setEditingTitle(e.target.value)}
+                  onBlur={() => {
                     if (editingTitle.trim()) updateFile(f.id, { title: editingTitle.trim() });
                     setEditingFileId(null);
-                  } else if (e.key === 'Escape') {
-                    setEditingFileId(null);
-                  }
-                }}
-                onClick={e => e.stopPropagation()}
-              />
-            ) : (
-                  <span className={`text-[13px] truncate ${activeFileId === f.id && !showSettings ? 'text-[var(--brand)] font-medium' : 'text-[var(--text-primary)]'}`}>{f.title || 'Untitled'}</span>
-            )}
-          </div>
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      if (editingTitle.trim()) updateFile(f.id, { title: editingTitle.trim() });
+                      setEditingFileId(null);
+                    } else if (e.key === 'Escape') {
+                      setEditingFileId(null);
+                    }
+                  }}
+                  onClick={e => e.stopPropagation()}
+                />
+              ) : (
+                <span className={`text-[13px] truncate ${activeFileId === f.id && !showSettings ? 'text-[var(--color-accent)] font-medium' : 'text-[var(--color-text-primary)]'}`}>{f.title || 'Untitled'}</span>
+              )}
+            </div>
 
-          <div className="hidden group-hover:flex items-center gap-1 shrink-0 ml-2">
-            <button
-              className={`p-1 rounded ${f.isPinned ? 'text-amber-500' : 'text-[var(--text-secondary)] hover:text-amber-500 hover:bg-amber-500/10'}`}
-              onClick={(e) => { e.stopPropagation(); updateFile(f.id, { isPinned: !f.isPinned }); }}
-              title={f.isPinned ? "Remove from Favourites" : "Add to Favourites"}
-            >
-              <Star size={12} className={f.isPinned ? 'fill-current' : ''} />
-            </button>
-            <button
-              className="p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border-primary)] rounded"
-              onClick={(e) => { e.stopPropagation(); setEditingFileId(f.id); setEditingTitle(f.title); }}
-              title="Rename"
-            >
-              <Edit2 size={12} />
-            </button>
-            <button
-              className="p-1 text-[var(--text-secondary)] hover:text-red-500 hover:bg-red-500/10 rounded"
-              onClick={(e) => { e.stopPropagation(); setFilesToDelete([f]); }}
-              title="Delete"
-            >
-              <Trash2 size={12} />
-            </button>
+            <div className="hidden group-hover:flex items-center gap-1 shrink-0 ml-2">
+              <button
+                ref={menuButtonRef}
+                className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-border)] rounded"
+                onClick={(e) => { e.stopPropagation(); setOpenFileMenuId(openFileMenuId === f.id ? null : f.id); }}
+                title="More options"
+              >
+                <MoreVertical size={12} />
+              </button>
+              {openFileMenuId === f.id && <FileMenuDropdown file={f} buttonRef={menuButtonRef} />}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  const renderSidebarFileItem = (f: FileItem) => <SidebarFileItem key={f.id} f={f} />;
 
   return (
     <div className={`app-shell bg-[var(--color-shell-bg)] ${appFontClass}`}>
-      {/* Sidebar Panel - Inset style with expanded gap on hover */}
+      {/* Sidebar Panel - Inset style with fixed gap */}
       <div
-        className={`flex flex-col h-full app-panel bg-[var(--color-sidebar-bg)] transition-all duration-300 ease-in-out no-print overflow-hidden ${sidebarOpen ? (isResizerHovered ? 'ml-2 mr-0 w-[200px] opacity-100' : 'ml-2 mr-2 w-[200px] opacity-100') : 'ml-0 mr-0 w-0 opacity-0'}`}
+        className={`flex flex-col h-full app-panel bg-[var(--color-sidebar-bg)] transition-all duration-300 ease-in-out no-print overflow-hidden ${sidebarOpen ? 'ml-2 mr-2 w-[200px] opacity-100' : 'ml-0 mr-0 w-0 opacity-0'}`}
       >
 
         {/* Mode Tabs — Symmetric padding for a centered look */}
@@ -3526,17 +3797,30 @@ export default function App() {
 
         {/* File List */}
         <div className="flex-grow overflow-y-auto p-2">
-          {files.filter(f => (activeMode === 'notes' ? f.type !== 'canvas' : f.type !== 'note') && f.type !== 'folder' && f.isPinned).length > 0 && (
-            <div className="mb-4">
-              <div className="text-[11px] font-medium text-[var(--text-secondary)] mb-2 px-2" style={{ letterSpacing: '0.03em' }}>
-                Favourite {activeMode === 'notes' ? 'Notes' : 'Canvas'}
-              </div>
-              {files
-                .filter(f => (activeMode === 'notes' ? f.type !== 'canvas' : f.type !== 'note') && f.type !== 'folder' && f.isPinned)
-                .sort((a, b) => b.updatedAt - a.updatedAt)
-                .map(renderSidebarFileItem)}
+          <div className="mb-4">
+            <div className="text-[11px] font-medium text-[var(--text-secondary)] mb-2 px-2" style={{ letterSpacing: '0.03em' }}>
+              Favourite {activeMode === 'notes' ? 'Notes' : 'Canvas'}
             </div>
-          )}
+            {(() => {
+              const pinnedFiles = files.filter(f => (activeMode === 'notes' ? f.type !== 'canvas' : f.type !== 'note') && f.type !== 'folder' && f.isPinned);
+              if (pinnedFiles.length === 0) {
+                return (
+                  <div className="px-2 py-1.5 text-[12px] text-[var(--text-secondary)] italic">
+                    No favourite {activeMode === 'notes' ? 'notes' : 'canvas'}
+                  </div>
+                );
+              }
+              const showScroll = pinnedFiles.length > 5;
+              return (
+                <div className={`${showScroll ? 'h-[200px] overflow-y-auto pr-1' : ''}`}>
+                  {pinnedFiles
+                    .sort((a, b) => b.updatedAt - a.updatedAt)
+                    .slice(0, 10)
+                    .map(renderSidebarFileItem)}
+                </div>
+              );
+            })()}
+          </div>
           <div>
             <div className="text-[11px] font-medium text-[var(--text-secondary)] mb-2 px-2" style={{ letterSpacing: '0.03em' }}>
               Recent {activeMode === 'notes' ? 'Notes' : 'Canvas'}
@@ -3574,13 +3858,11 @@ export default function App() {
       {/* Resizer/Gap Area - 8px gap with shell-colored hover */}
       {sidebarOpen ? (
         <div
-          className="sidebar-resizer w-2 bg-transparent hover:bg-[var(--color-shell-bg)] transition-all duration-300 ease-in-out"
+          className="sidebar-resizer w-2 bg-transparent hover:bg-[var(--color-shell-bg)] transition-all duration-300 ease-in-out relative"
           onClick={() => setSidebarOpen(false)}
-          onMouseEnter={() => setIsResizerHovered(true)}
-          onMouseLeave={() => setIsResizerHovered(false)}
           title="Close Sidebar"
         >
-          <div className="sidebar-resizer-line" />
+          <div className="sidebar-resizer-line opacity-100" />
         </div>
       ) : (
         <>
@@ -3605,7 +3887,7 @@ export default function App() {
 
       {/* Main Content - Equal spacing when closed, shrinks on hover */}
       <div
-        className={`flex-grow h-full overflow-hidden bg-[var(--color-editor-bg)] app-panel transition-all duration-300 ease-in-out ${sidebarOpen ? (isResizerHovered ? 'ml-4 mr-2' : 'ml-0 mr-2') : (isResizerHovered ? 'ml-4 mr-0' : 'ml-0 mr-0')}`}
+        className={`flex-grow h-full overflow-hidden bg-[var(--color-editor-bg)] app-panel transition-all duration-300 ease-in-out ${sidebarOpen ? 'ml-0 mr-2' : (isResizerHovered ? 'ml-4 mr-0' : 'ml-0 mr-0')}`}
       >
         {showSettings ? (
           <SettingsPage appFontClass={appFontClass} onAppFontChange={setAppFontClass} />
@@ -3638,14 +3920,14 @@ export default function App() {
       {/* Delete Confirmation Modal */}
       {filesToDelete && filesToDelete.length > 0 && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-xl p-4 w-80">
-            <h3 className="font-serif text-lg mb-2">Delete {filesToDelete.length > 1 ? 'Files' : 'File'}</h3>
-            <p className="text-sm text-[var(--text-secondary)] mb-4">
+          <div className="bg-[var(--color-shell-bg)] border border-[var(--color-border)] rounded-lg shadow-xl p-4 w-80">
+            <h3 className="font-inter text-lg mb-2 text-[var(--color-text-primary)]">Delete {filesToDelete.length > 1 ? 'Files' : 'File'}</h3>
+            <p className="text-sm text-[var(--color-text-muted)] mb-4">
               Are you sure you want to delete {filesToDelete.length > 1 ? `${filesToDelete.length} files` : `"${filesToDelete[0].title}"`}? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
               <button
-                className="px-3 py-1.5 text-sm rounded hover:bg-[var(--bg-tertiary)] transition-colors"
+                className="px-3 py-1.5 text-sm text-[var(--color-text-primary)] rounded hover:bg-[var(--color-surface-hover)] transition-colors"
                 onClick={() => setFilesToDelete(null)}
               >
                 Cancel
