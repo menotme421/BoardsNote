@@ -43,7 +43,7 @@ export const ShapePropertiesPanel = ({ settings, onChange }: any) => {
               backgroundImage: 'linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc), linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc)',
               backgroundSize: '8px 8px',
               backgroundPosition: '0 0, 4px 4px',
-              border: settings.fill === 'transparent' ? '2px solid var(--text-primary)' : '1px solid var(--border-primary)'
+              border: settings.fill === 'transparent' ? '2px solid var(--color-accent)' : '1px solid var(--color-border)'
             }}
             onClick={() => onChange({ ...settings, fill: 'transparent' })}
             title="Transparent"
@@ -58,11 +58,11 @@ export const ShapePropertiesPanel = ({ settings, onChange }: any) => {
           ))}
           <div className="relative">
             <button
-              className={`color-swatch flex items-center justify-center border border-dashed border-[var(--border-primary)] ${settings.fill !== 'transparent' && !IMPORTANT_COLORS.includes(settings.fill) ? 'active' : ''}`}
+              className={`color-swatch flex items-center justify-center border border-dashed border-[var(--color-border)] ${settings.fill !== 'transparent' && !IMPORTANT_COLORS.includes(settings.fill) ? 'active' : ''}`}
               style={{ backgroundColor: settings.fill !== 'transparent' && !IMPORTANT_COLORS.includes(settings.fill) ? settings.fill : 'transparent' }}
               onClick={() => document.getElementById('shape-fill-custom')?.click()}
             >
-              <Plus size={14} className={settings.fill !== 'transparent' && !IMPORTANT_COLORS.includes(settings.fill) ? 'text-white mix-blend-difference' : 'text-[var(--text-secondary)]'} />
+              <Plus size={14} className={settings.fill !== 'transparent' && !IMPORTANT_COLORS.includes(settings.fill) ? 'text-white mix-blend-difference' : 'text-[var(--color-text-muted)]'} />
             </button>
             <input
               id="shape-fill-custom"

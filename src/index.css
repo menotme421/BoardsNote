@@ -970,13 +970,13 @@ svg.lucide {
   }
 }
 
-/* Properties Panel Container */
+/* Properties Panel Container - Design System v2 */
 .canvas-properties-panel {
   position: absolute;
   right: 24px;
   top: 50%;
   transform: translateY(-50%);
-  background-color: var(--bg-primary);
+  background-color: var(--bg-secondary);
   border: 1px solid var(--border-primary);
   border-radius: 16px;
   padding: 1.25rem;
@@ -995,7 +995,7 @@ svg.lucide {
   left: 24px;
   top: 50%;
   transform: translateY(-50%);
-  background-color: var(--bg-primary);
+  background-color: var(--bg-secondary);
   border: 1px solid var(--border-primary);
   border-radius: 16px;
   padding: 1.25rem;
@@ -1033,9 +1033,11 @@ svg.lucide {
 
 /* Properties Panel Headers */
 .properties-header {
-  font-size: 11px;
-  font-family: 'DM Mono', monospace;
-  text-transform: lowercase;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 600;
+  line-height: 1.4;
+  text-transform: none;
   color: var(--text-primary);
   margin-bottom: 1.25rem;
   padding-bottom: 0.75rem;
@@ -1052,10 +1054,12 @@ svg.lucide {
 }
 
 .properties-label {
-  font-size: 10px;
-  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 500;
   color: var(--text-secondary);
-  text-transform: lowercase;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   margin-bottom: 0.5rem;
   display: block;
 }
@@ -1066,33 +1070,36 @@ svg.lucide {
   gap: 4px;
   background-color: var(--bg-secondary);
   padding: 3px;
-  border-radius: 6px;
+  border-radius: var(--radius-tiny);
 }
 
 .button-group-item {
   flex: 1;
   padding: 6px 4px;
-  border: none;
+  border: 1px solid var(--border-primary);
   background-color: transparent;
-  border-radius: 4px;
+  border-radius: var(--radius-tiny);
   font-size: 10px;
-  font-family: 'DM Mono', monospace;
+  font-family: inherit;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
-  color: var(--text-secondary);
+  color: var(--color-text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .button-group-item.active {
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background-color: var(--color-accent-tint);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  box-shadow: none;
 }
 
 .button-group-item:hover:not(.active) {
-  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+  color: var(--color-text-primary);
   transform: scale(1.05);
 }
 
@@ -1127,8 +1134,8 @@ svg.lucide {
 }
 
 .color-swatch.active {
-  border-color: var(--text-primary);
-  box-shadow: 0 0 0 2px var(--bg-primary) inset;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-editor-bg) inset;
 }
 
 /* Range Slider (Hidden but kept for reference) */
@@ -1138,7 +1145,7 @@ svg.lucide {
 
 .range-value {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--color-text-muted);
   margin-top: 0.5rem;
 }
 
@@ -1146,28 +1153,28 @@ svg.lucide {
 .text-select {
   width: 100%;
   padding: 0.5rem;
-  border: 1px solid var(--border-primary);
-  border-radius: 4px;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-tiny);
+  background-color: var(--color-editor-bg);
+  color: var(--color-text-primary);
   font-size: 12px;
   cursor: pointer;
   font-family: 'DM Sans', sans-serif;
 }
 
 .text-select:hover {
-  border-color: var(--text-secondary);
+  border-color: var(--color-text-muted);
 }
 
 .text-select:focus {
   outline: none;
-  border-color: var(--text-primary);
+  border-color: var(--color-text-primary);
 }
 
-/* Toolbar Styling */
+/* Toolbar Styling - Design System v2 */
 .canvas-toolbar {
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-primary);
+  background-color: var(--color-editor-bg);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
   padding: 0.5rem;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
@@ -1178,12 +1185,12 @@ svg.lucide {
 }
 
 .toolbar-btn {
-  border-radius: 8px;
+  border-radius: var(--radius-tiny);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  color: var(--text-secondary);
+  transition: all 0.15s ease;
+  color: var(--color-text-muted);
   cursor: pointer;
   border: none;
   background: transparent;
@@ -1200,8 +1207,8 @@ svg.lucide {
 }
 
 .toolbar-btn:hover {
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-primary);
 }
 
 .toolbar-btn:active {
@@ -1209,14 +1216,14 @@ svg.lucide {
 }
 
 .toolbar-btn.active {
-  background-color: var(--text-primary);
-  color: var(--bg-primary);
+  background-color: var(--color-accent-tint);
+  color: var(--color-accent);
 }
 
 .toolbar-divider {
   width: 1px;
   height: 24px;
-  background-color: var(--border-primary);
+  background-color: var(--color-border);
   margin: 0 0.25rem;
 }
 

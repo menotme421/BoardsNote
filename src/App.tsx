@@ -56,7 +56,7 @@ import {
   Sun, Moon, Settings, Cloud, Star,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Undo, Redo, Tag, Trash2, Edit2, X, CheckSquare,
-  Check, CheckCircle2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Columns, Rows, Zap, Navigation, Clipboard, Lock, PanelLeft, Info, Baseline, Highlighter
+  Check, CheckCircle2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Columns, Rows, Zap, Navigation, Clipboard, Lock, PanelLeft, PanelTop, Info, Baseline, Highlighter
 } from 'lucide-react';
 
 type FileType = 'note' | 'canvas' | 'folder';
@@ -485,17 +485,17 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
               return !empty;
             }}>
               <div 
-                className="flex items-center gap-0.5 px-1 py-0.5 bg-white border border-[#e0e0e0] rounded-[2px] shadow-[0_1px_4px_rgba(0,0,0,0.08)]"
+                className="flex items-center gap-0.5 px-1 py-0.5 bg-[var(--color-shell-bg)] border border-[var(--color-border)] rounded-[var(--radius-tiny)] shadow-[0_1px_4px_rgba(0,0,0,0.08)]"
                 style={{ height: '28px' }}
               >
-                <button className="p-1 hover:bg-[#f5f5f5] rounded-[1px] text-[#666666] hover:text-[#111111] transition-colors" onClick={() => editor.chain().focus().toggleBold().run()}><Bold size={13} /></button>
-                <button className="p-1 hover:bg-[#f5f5f5] rounded-[1px] text-[#666666] hover:text-[#111111] transition-colors" onClick={() => editor.chain().focus().toggleItalic().run()}><Italic size={13} /></button>
-                <button className="p-1 hover:bg-[#f5f5f5] rounded-[1px] text-[#666666] hover:text-[#111111] transition-colors" onClick={() => editor.chain().focus().toggleStrike().run()}><Strikethrough size={13} /></button>
-                <button className="p-1 hover:bg-[#f5f5f5] rounded-[1px] text-[#666666] hover:text-[#111111] transition-colors" onClick={() => editor.chain().focus().toggleUnderline().run()}><Underline size={13} /></button>
-                <button className="p-1 hover:bg-[#f5f5f5] rounded-[1px] text-[#666666] hover:text-[#111111] transition-colors" onClick={() => editor.chain().focus().toggleCode().run()}><Code size={13} /></button>
+                <button className="p-1 hover:bg-[var(--color-surface-hover)] rounded-[var(--radius-tiny)] text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors" onClick={() => editor.chain().focus().toggleBold().run()}><Bold size={13} /></button>
+                <button className="p-1 hover:bg-[var(--color-surface-hover)] rounded-[var(--radius-tiny)] text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors" onClick={() => editor.chain().focus().toggleItalic().run()}><Italic size={13} /></button>
+                <button className="p-1 hover:bg-[var(--color-surface-hover)] rounded-[var(--radius-tiny)] text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors" onClick={() => editor.chain().focus().toggleStrike().run()}><Strikethrough size={13} /></button>
+                <button className="p-1 hover:bg-[var(--color-surface-hover)] rounded-[var(--radius-tiny)] text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors" onClick={() => editor.chain().focus().toggleUnderline().run()}><Underline size={13} /></button>
+                <button className="p-1 hover:bg-[var(--color-surface-hover)] rounded-[var(--radius-tiny)] text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors" onClick={() => editor.chain().focus().toggleCode().run()}><Code size={13} /></button>
                 <div className="relative">
                   <button
-                    className="p-1 hover:bg-[#f5f5f5] rounded-[1px] text-[#666666] hover:text-[#111111] flex items-center gap-0.5 transition-colors"
+                    className="p-1 hover:bg-[var(--color-surface-hover)] rounded-[var(--radius-tiny)] text-[var(--color-text-primary)] hover:text-[var(--color-accent)] flex items-center gap-0.5 transition-colors"
                     onClick={() => {
                       setFormatMenuOpen((v) => !v);
                       setTurnMenuOpen(false);
@@ -506,28 +506,28 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
                     <ChevronRight size={10} className={`transition-transform ${formatMenuOpen ? 'rotate-90' : ''}`} />
                   </button>
                   {formatMenuOpen && (
-                    <div className="absolute top-full mt-1 left-0 z-[10001] w-44 bg-white border border-[#e0e0e0] rounded-[2px] py-1 shadow-[0_2px_8px_rgba(0,0,0,0.10)]">
-                      <div className="px-2 py-1 text-[10px] uppercase text-[#999999] font-medium tracking-tight">Text Color</div>
+                    <div className="absolute top-full mt-1 left-0 z-[10001] w-44 bg-[var(--color-shell-bg)] border border-[var(--color-border)] rounded-[var(--radius-tiny)] py-1 shadow-[0_2px_8px_rgba(0,0,0,0.10)]">
+                      <div className="px-2 py-1 text-[10px] uppercase text-[var(--color-text-muted)] font-medium tracking-wider">Text Color</div>
                       {textColorOptions.map((option) => (
                         <button
                           key={option.id}
-                          className="w-full px-2 py-1 text-left text-xs hover:bg-[#f5f5f5] flex items-center gap-2 transition-colors"
+                          className="w-full px-2 py-1 text-left text-xs hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2 transition-colors"
                           onClick={() => {
                             if (option.id === 'default') editor.chain().focus().unsetColor().run();
                             else editor.chain().focus().setColor(option.color).run();
                             setFormatMenuOpen(false);
                           }}
                         >
-                          <span style={{ color: option.color }}><Baseline size={13} /></span>
+                          <span style={{ color: option.id === 'default' ? 'var(--color-text-primary)' : option.color }}><Baseline size={13} /></span>
                           {option.label}
                         </button>
                       ))}
-                      <div className="h-px bg-[#e0e0e0] my-1" />
-                      <div className="px-2 py-1 text-[10px] uppercase text-[#999999] font-medium tracking-tight">Highlight</div>
+                      <div className="h-px bg-[var(--color-border)] my-1" />
+                      <div className="px-2 py-1 text-[10px] uppercase text-[var(--color-text-muted)] font-medium tracking-wider">Highlight</div>
                       {highlightOptions.map((option) => (
                         <button
                           key={option.id}
-                          className="w-full px-2 py-1 text-left text-xs hover:bg-[#f5f5f5] flex items-center gap-2 transition-colors"
+                          className="w-full px-2 py-1 text-left text-xs hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2 transition-colors"
                           onClick={() => {
                             if (option.id === 'default') editor.chain().focus().unsetHighlight().run();
                             else editor.chain().focus().setHighlight({ color: option.color }).run();
@@ -535,11 +535,11 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
                           }}
                         >
                           <span
-                            className="inline-flex items-center justify-center w-4 h-4 rounded-[1px]"
+                            className="inline-flex items-center justify-center w-4 h-4 rounded-[var(--radius-tiny)]"
                             style={{
                               backgroundColor: option.id === 'default' ? 'transparent' : option.color,
-                              color: option.id === 'default' ? '#666666' : '#111111',
-                              border: option.id === 'default' ? '1px solid #e0e0e0' : 'none',
+                              color: 'var(--color-text-primary)',
+                              border: option.id === 'default' ? '1px solid var(--color-border)' : 'none',
                             }}
                           >
                             <Highlighter size={11} />
@@ -552,7 +552,7 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
                 </div>
                 <div className="relative">
                   <button
-                    className="text-[10px] bg-transparent border border-[#e0e0e0] rounded-[1px] px-1.5 py-0.5 hover:bg-[#f5f5f5] flex items-center gap-0.5 text-[#666666] hover:text-[#111111] transition-colors"
+                    className="text-[10px] bg-transparent border border-[var(--color-border)] rounded-[var(--radius-tiny)] px-1.5 py-0.5 hover:bg-[var(--color-surface-hover)] flex items-center gap-0.5 text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors"
                     onClick={() => {
                       setTurnMenuOpen((v) => !v);
                       setFormatMenuOpen(false);
@@ -562,7 +562,7 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
                     <ChevronRight size={9} className={`transition-transform ${turnMenuOpen ? 'rotate-90' : ''}`} />
                   </button>
                   {turnMenuOpen && (
-                    <div className="absolute top-full mt-1 right-0 z-[10001] w-40 bg-white border border-[#e0e0e0] rounded-[2px] py-1 shadow-[0_2px_8px_rgba(0,0,0,0.10)]">
+                    <div className="absolute top-full mt-1 right-0 z-[10001] w-40 bg-[var(--color-shell-bg)] border border-[var(--color-border)] rounded-[var(--radius-tiny)] py-1 shadow-[0_2px_8px_rgba(0,0,0,0.10)]">
                       {[
                         { id: 'p', label: 'Paragraph', icon: <Pilcrow size={13} /> },
                         { id: 'h1', label: 'Heading 1', icon: <Heading1 size={13} /> },
@@ -572,7 +572,7 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
                       ].map((item) => (
                         <button
                           key={item.id}
-                          className="w-full px-2 py-1 text-left text-xs hover:bg-[#f5f5f5] flex items-center gap-2 transition-colors"
+                          className="w-full px-2 py-1 text-left text-xs hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2 transition-colors"
                           onClick={() => {
                             if (item.id === 'p') editor.chain().focus().setParagraph().run();
                             if (item.id === 'h1') editor.chain().focus().setHeading({ level: 1 }).run();
@@ -582,7 +582,7 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
                             setTurnMenuOpen(false);
                           }}
                         >
-                          <span className="text-[#999999]">{item.icon}</span>
+                          <span className="text-[var(--color-text-primary)]">{item.icon}</span>
                           {item.label}
                         </button>
                       ))}
@@ -697,9 +697,28 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
           {/* Dropdown */}
           {tableMenuOpen && (
             <div
-              className="absolute right-0 mt-0.5 w-40 bg-[var(--color-shell-bg)] border border-[var(--color-border)] rounded-[var(--radius-tiny)] py-1 shadow-[0_2px_8px_rgba(0,0,0,0.10)]"
+              className="absolute right-0 mt-0.5 w-44 bg-[var(--color-shell-bg)] border border-[var(--color-border)] rounded-[var(--radius-tiny)] py-1 shadow-[0_2px_8px_rgba(0,0,0,0.10)]"
               style={{ top: '100%' }}
             >
+              {/* Section 1: Header Toggle */}
+              <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-medium">
+                Header
+              </div>
+              <button
+                className="w-full px-3 py-1.5 text-left text-[13px] flex items-center gap-2 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] transition-colors"
+                onMouseDown={(e) => { e.preventDefault(); editor.chain().toggleHeaderRow().run(); setTableMenuOpen(false); }}
+              >
+                <PanelTop size={12} className="text-[var(--color-text-muted)]" /> Toggle header row
+              </button>
+              <button
+                className="w-full px-3 py-1.5 text-left text-[13px] flex items-center gap-2 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] transition-colors"
+                onMouseDown={(e) => { e.preventDefault(); editor.chain().toggleHeaderColumn().run(); setTableMenuOpen(false); }}
+              >
+                <PanelLeft size={12} className="text-[var(--color-text-muted)]" /> Toggle header column
+              </button>
+              <div className="h-px bg-[var(--color-border)] my-1" />
+
+              {/* Section 2: Add */}
               <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-medium">
                 Add
               </div>
@@ -716,6 +735,8 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
                 <Plus size={12} className="text-[var(--color-text-muted)]" /> Column right
               </button>
               <div className="h-px bg-[var(--color-border)] my-1" />
+
+              {/* Section 3: Delete */}
               <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-medium">
                 Delete
               </div>
@@ -808,6 +829,111 @@ const CanvasNode = React.memo(({
   const isTextLike = ['text', 'rich-text-card'].includes(node.type);
   const isResizable = ['shape'].includes(node.type);
   const isNewComponent = ['sticky-note', 'text-block', 'link-card', 'image-block'].includes(node.type);
+  const resizeHandles = [
+    { key: 'nw', className: 'left-[-4px] top-[-4px] cursor-nw-resize' },
+    { key: 'n', className: 'left-1/2 top-[-4px] -translate-x-1/2 cursor-n-resize' },
+    { key: 'ne', className: 'right-[-4px] top-[-4px] cursor-ne-resize' },
+    { key: 'w', className: 'left-[-4px] top-1/2 -translate-y-1/2 cursor-w-resize' },
+    { key: 'e', className: 'right-[-4px] top-1/2 -translate-y-1/2 cursor-e-resize' },
+    { key: 'sw', className: 'left-[-4px] bottom-[-4px] cursor-sw-resize' },
+    { key: 's', className: 'left-1/2 bottom-[-4px] -translate-x-1/2 cursor-s-resize' },
+    { key: 'se', className: 'right-[-4px] bottom-[-4px] cursor-se-resize' },
+  ];
+
+  const getCanvasScale = () => {
+    const transform = nodeRef.current?.parentElement?.style.transform || '';
+    const match = transform.match(/scale\(([^)]+)\)/);
+    return match?.[1] ? parseFloat(match[1]) : 1;
+  };
+
+  const applyShapeRectToDom = (rect: { x: number, y: number, width: number, height: number }) => {
+    if (!nodeRef.current) return;
+    nodeRef.current.style.left = `${rect.x}px`;
+    nodeRef.current.style.top = `${rect.y}px`;
+    nodeRef.current.style.width = `${rect.width}px`;
+    nodeRef.current.style.height = `${rect.height}px`;
+  };
+
+  const handleShapeMovePointerDown = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onPointerDown(e, node.id, true);
+    if (!onUpdateNode) return;
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startRect = { x: node.x, y: node.y, width: node.width, height: node.height };
+    let nextRect = startRect;
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const scale = getCanvasScale();
+      nextRect = {
+        ...startRect,
+        x: startRect.x + (moveEvent.clientX - startX) / scale,
+        y: startRect.y + (moveEvent.clientY - startY) / scale
+      };
+      applyShapeRectToDom(nextRect);
+    };
+
+    const onPointerUp = () => {
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+      onUpdateNode(node.id, { x: nextRect.x, y: nextRect.y });
+    };
+
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+  };
+
+  const handleResizePointerDown = (e: React.PointerEvent, direction: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!onUpdateNode) return;
+
+    const minSize = 20;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startRect = { x: node.x, y: node.y, width: node.width, height: node.height };
+    let nextRect = startRect;
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const scale = getCanvasScale();
+      const dx = (moveEvent.clientX - startX) / scale;
+      const dy = (moveEvent.clientY - startY) / scale;
+
+      let x = startRect.x;
+      let y = startRect.y;
+      let width = startRect.width;
+      let height = startRect.height;
+
+      if (direction.includes('w')) {
+        width = Math.max(minSize, startRect.width - dx);
+        x = startRect.x + startRect.width - width;
+      }
+      if (direction.includes('e')) {
+        width = Math.max(minSize, startRect.width + dx);
+      }
+      if (direction.includes('n')) {
+        height = Math.max(minSize, startRect.height - dy);
+        y = startRect.y + startRect.height - height;
+      }
+      if (direction.includes('s')) {
+        height = Math.max(minSize, startRect.height + dy);
+      }
+
+      nextRect = { x, y, width, height };
+      applyShapeRectToDom(nextRect);
+    };
+
+    const onPointerUp = () => {
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+      onUpdateNode(node.id, nextRect);
+    };
+
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+  };
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -848,6 +974,10 @@ const CanvasNode = React.memo(({
     <div
       ref={nodeRef}
       onPointerDown={(e) => {
+        if (node.type === 'shape' && tool === 'select' && !node.isLocked) {
+          handleShapeMovePointerDown(e);
+          return;
+        }
         if (!node.isLocked) {
           onPointerDown(e, node.id);
         } else {
@@ -857,7 +987,7 @@ const CanvasNode = React.memo(({
         }
       }}
       onDoubleClick={handleDoubleClick}
-      className={`absolute transition-all duration-200 ${isNewComponent
+      className={`absolute ${node.type === 'shape' ? '' : 'transition-all duration-200'} ${isNewComponent
         ? `${isSelected ? 'ring-2 ring-blue-500/50 z-10' : 'hover:ring-1 hover:ring-blue-500/30'} ${isEditing ? 'ring-2 ring-blue-500' : ''}`
         : isTextLike
           ? `border rounded-md ${isSelected
@@ -893,46 +1023,15 @@ const CanvasNode = React.memo(({
       )}
 
       {isResizable && isSelected && tool === 'select' && !node.isLocked && (
-        <div
-          className="absolute right-[-6px] bottom-[-6px] w-3 h-3 bg-white border border-blue-500 rounded-sm cursor-se-resize z-20"
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            const startX = e.clientX;
-            const startY = e.clientY;
-            const startWidth = node.width;
-            const startHeight = node.height;
-
-            const onPointerMove = (moveEvent: PointerEvent) => {
-              const container = document.querySelector('.flex-grow.overflow-hidden.relative');
-              let scale = 1;
-              if (container) {
-                const match = container.querySelector('div')?.style.transform.match(/scale\(([^)]+)\)/);
-                if (match && match[1]) {
-                  scale = parseFloat(match[1]);
-                }
-              }
-
-              let newWidth = Math.max(10, startWidth + (moveEvent.clientX - startX) / scale);
-              let newHeight = Math.max(10, startHeight + (moveEvent.clientY - startY) / scale);
-
-              if (node.shapeType === 'circle') {
-                const size = Math.max(newWidth, newHeight);
-                newWidth = size;
-                newHeight = size;
-              }
-
-              onResizeRef.current?.(node.id, newWidth, newHeight);
-            };
-
-            const onPointerUp = () => {
-              document.removeEventListener('pointermove', onPointerMove);
-              document.removeEventListener('pointerup', onPointerUp);
-            };
-
-            document.addEventListener('pointermove', onPointerMove);
-            document.addEventListener('pointerup', onPointerUp);
-          }}
-        />
+        <>
+          {resizeHandles.map(handle => (
+            <div
+              key={handle.key}
+              className={`absolute w-2 h-2 bg-white border border-[var(--color-accent)] rounded-[2px] z-20 ${handle.className}`}
+              onPointerDown={(e) => handleResizePointerDown(e, handle.key)}
+            />
+          ))}
+        </>
       )}
 
       {node.type === 'sticky-note' && (
@@ -1041,18 +1140,14 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
   const [tool, setTool] = useState('select');
   const [nodes, setNodes] = useState<any[]>(file.elements?.nodes || []);
   const [edges, setEdges] = useState<any[]>(file.elements?.edges || []);
-  const [arrows, setArrows] = useState<any[]>(file.elements?.arrows || []);
   const [strokes, setStrokes] = useState<any[]>(file.elements?.strokes || []);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null);
-  const [selectedArrowId, setSelectedArrowId] = useState<string | null>(null);
-  const [draggingArrowEndpoint, setDraggingArrowEndpoint] = useState<'start' | 'end' | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [currentStroke, setCurrentStroke] = useState<{ x: number, y: number, p: number }[] | null>(null);
-  const [currentArrow, setCurrentArrow] = useState<any>(null);
   const [penSettings, setPenSettings] = useState({
     color: 'var(--text-primary)',
     width: 2,
@@ -1075,16 +1170,9 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
     italic: false,
     align: 'left'
   });
-  const [arrowSettings, setArrowSettings] = useState({
-    style: 'straight',
-    tailHead: false,
-    headArrow: true,
-    weight: 'med',
-    color: '#0c0c0c'
-  });
 
-  const undoStack = useRef<{ nodes: any[], edges: any[], strokes: any[], arrows: any[] }[]>([]);
-  const redoStack = useRef<{ nodes: any[], edges: any[], strokes: any[], arrows: any[] }[]>([]);
+  const undoStack = useRef<{ nodes: any[], edges: any[], strokes: any[] }[]>([]);
+  const redoStack = useRef<{ nodes: any[], edges: any[], strokes: any[] }[]>([]);
   const isUndoing = useRef(false);
   const [isErasing, setIsErasing] = useState(false);
   const isTyping = useRef(false);
@@ -1094,11 +1182,8 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
 
   const isDrawingRef = useRef(false);
   const isDrawingShapeRef = useRef(false);
-  const isDrawingArrowRef = useRef(false);
   const currentShapeStartRef = useRef({ x: 0, y: 0 });
   const currentShapeIdRef = useRef<string | null>(null);
-  const currentArrowStartRef = useRef({ x: 0, y: 0 });
-  const currentArrowIdRef = useRef<string | null>(null);
   const isPanningRef = useRef(false);
   const isErasingRef = useRef(false);
   const activePointerIdRef = useRef<number | null>(null);
@@ -1162,17 +1247,16 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
       isUndoing.current = false;
       return;
     }
-    if (currentStroke !== null || currentArrow !== null || isDragging || isErasing || isTyping.current) return;
+    if (currentStroke !== null || isDragging || isErasing || isTyping.current) return;
 
-    const currentState = { nodes, edges, strokes, arrows };
+    const currentState = { nodes, edges, strokes };
     const lastState = undoStack.current[undoStack.current.length - 1];
 
     if (lastState) {
       if (
         JSON.stringify(lastState.nodes) === JSON.stringify(currentState.nodes) &&
         JSON.stringify(lastState.edges) === JSON.stringify(currentState.edges) &&
-        JSON.stringify(lastState.strokes) === JSON.stringify(currentState.strokes) &&
-        JSON.stringify(lastState.arrows) === JSON.stringify(currentState.arrows)
+        JSON.stringify(lastState.strokes) === JSON.stringify(currentState.strokes)
       ) {
         return;
       }
@@ -1181,7 +1265,7 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
     undoStack.current.push(currentState);
     if (undoStack.current.length > 50) undoStack.current.shift();
     redoStack.current = [];
-  }, [nodes, edges, strokes, arrows, currentStroke, currentArrow, isDragging, isErasing, forceSave]);
+  }, [nodes, edges, strokes, currentStroke, isDragging, isErasing, forceSave]);
 
   const handleUndo = () => {
     if (undoStack.current.length > 1) {
@@ -1192,7 +1276,6 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
       setNodes(previousState.nodes);
       setEdges(previousState.edges);
       setStrokes(previousState.strokes);
-      setArrows(previousState.arrows || []);
     }
   };
 
@@ -1204,7 +1287,6 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
       setNodes(nextState.nodes);
       setEdges(nextState.edges);
       setStrokes(nextState.strokes);
-      setArrows(nextState.arrows || []);
     }
   };
 
@@ -1212,19 +1294,10 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
     if (selectedNodeId) {
       setNodes(nodes.filter(n => n.id !== selectedNodeId));
       setEdges(edges.filter(e => e.source !== selectedNodeId && e.target !== selectedNodeId));
-      setArrows(arrows.map(a => {
-        const newA = { ...a };
-        if (a.startNodeId === selectedNodeId) newA.startNodeId = null;
-        if (a.endNodeId === selectedNodeId) newA.endNodeId = null;
-        return newA;
-      }));
       setSelectedNodeId(null);
     } else if (selectedStrokeId) {
       setStrokes(strokes.filter(s => s.id !== selectedStrokeId));
       setSelectedStrokeId(null);
-    } else if (selectedArrowId) {
-      setArrows(arrows.filter(a => a.id !== selectedArrowId));
-      setSelectedArrowId(null);
     }
   };
 
@@ -1378,28 +1451,6 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
     return false;
   };
 
-  const isPointInArrow = (x: number, y: number, arrow: any, tolerance = 10) => {
-    const minX = Math.min(arrow.startPoint.x, arrow.endPoint.x) - tolerance;
-    const maxX = Math.max(arrow.startPoint.x, arrow.endPoint.x) + tolerance;
-    const minY = Math.min(arrow.startPoint.y, arrow.endPoint.y) - tolerance;
-    const maxY = Math.max(arrow.startPoint.y, arrow.endPoint.y) + tolerance;
-
-    if (x < minX || x > maxX || y < minY || y > maxY) return false;
-
-    const dx = arrow.endPoint.x - arrow.startPoint.x;
-    const dy = arrow.endPoint.y - arrow.startPoint.y;
-    const l2 = dx * dx + dy * dy;
-    if (l2 === 0) return Math.hypot(x - arrow.startPoint.x, y - arrow.startPoint.y) < tolerance;
-
-    let t = ((x - arrow.startPoint.x) * dx + (y - arrow.startPoint.y) * dy) / l2;
-    t = Math.max(0, Math.min(1, t));
-
-    const projX = arrow.startPoint.x + t * dx;
-    const projY = arrow.startPoint.y + t * dy;
-
-    return Math.hypot(x - projX, y - projY) < tolerance;
-  };
-
   const findNodeAtPoint = (x: number, y: number, tolerance = 20) => {
     // Search top-down by zIndex
     const sortedNodes = [...nodes].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
@@ -1480,46 +1531,6 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
       return; // Early return to prevent other logic
     }
 
-    if (tool === 'arrow') {
-      const maxZ = Math.max(...[...nodes, ...strokes, ...arrows].map(el => el.zIndex || 0), -1);
-      const newArrowId = Math.random().toString(36).substr(2, 9);
-
-      const startNode = findNodeAtPoint(coords.x, coords.y, 20 / transform.scale);
-
-      const newArrow = {
-        id: newArrowId,
-        startPoint: { x: coords.x, y: coords.y },
-        endPoint: { x: coords.x, y: coords.y },
-        startNodeId: startNode ? startNode.id : null,
-        endNodeId: null,
-        style: arrowSettings.style,
-        tailHead: arrowSettings.tailHead,
-        headArrow: arrowSettings.headArrow,
-        weight: arrowSettings.weight,
-        color: arrowSettings.color,
-        zIndex: maxZ + 1
-      };
-
-      if (startNode) {
-        newArrow.startPoint = { x: startNode.x, y: startNode.y };
-      }
-
-      setArrows([...arrows, newArrow]);
-      setSelectedArrowId(newArrowId);
-      setSelectedNodeId(null);
-      setSelectedStrokeId(null);
-
-      isDrawingArrowRef.current = true;
-      currentArrowStartRef.current = { x: coords.x, y: coords.y };
-      currentArrowIdRef.current = newArrowId;
-      activePointerIdRef.current = e.pointerId;
-      setIsDragging(true);
-
-      e.preventDefault();
-      e.stopPropagation();
-      return;
-    }
-
     // Other tools below
     if (tool === 'shape') {
       const maxZ = Math.max(...[...nodes, ...strokes].map(el => el.zIndex || 0), -1);
@@ -1584,25 +1595,6 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
 
     if (tool === 'select') {
       setSelectedNodeId(null);
-      setSelectedArrowId(null);
-
-      // Check for arrow selection
-      let foundArrowId = null;
-      for (let i = arrows.length - 1; i >= 0; i--) {
-        if (isPointInArrow(coords.x, coords.y, arrows[i], 10 / transform.scale)) {
-          foundArrowId = arrows[i].id;
-          break;
-        }
-      }
-
-      if (foundArrowId) {
-        setSelectedArrowId(foundArrowId);
-        setIsDragging(true);
-        setDragStart({ x: e.clientX, y: e.clientY });
-        activePointerIdRef.current = e.pointerId;
-        e.stopPropagation();
-        return;
-      }
 
       // Check for stroke selection (top-down by zIndex)
       let foundStrokeId = null;
@@ -1626,7 +1618,6 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
 
     setSelectedNodeId(null);
     setSelectedStrokeId(null);
-    setSelectedArrowId(null);
   };
 
   const [currentPressure, setCurrentPressure] = useState(0);
@@ -1643,23 +1634,6 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
         y: prev.y + (e.clientY - dragStart.y)
       }));
       setDragStart({ x: e.clientX, y: e.clientY });
-      return;
-    }
-
-    if (isDrawingArrowRef.current && currentArrowIdRef.current) {
-      const coords = getCanvasCoords(e);
-      const endNode = findNodeAtPoint(coords.x, coords.y, 20 / transform.scale);
-
-      setArrows(prev => prev.map(a => {
-        if (a.id === currentArrowIdRef.current) {
-          const newA = { ...a, endPoint: { x: coords.x, y: coords.y }, endNodeId: endNode ? endNode.id : null };
-          if (endNode) {
-            newA.endPoint = { x: endNode.x, y: endNode.y };
-          }
-          return newA;
-        }
-        return a;
-      }));
       return;
     }
 
@@ -1696,63 +1670,16 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
       const dy = (e.clientY - dragStart.y) / transform.scale;
 
       if (selectedNodeId) {
-        const node = nodes.find(n => n.id === selectedNodeId);
-        if (node) {
-          setNodes(prev => prev.map(n => n.id === selectedNodeId ? {
-            ...n,
-            x: n.x + dx,
-            y: n.y + dy
-          } : n));
-
-          setArrows(prev => prev.map(a => {
-            let updated = false;
-            const newA = { ...a };
-            if (a.startNodeId === selectedNodeId) {
-              newA.startPoint = { x: node.x + dx, y: node.y + dy };
-              updated = true;
-            }
-            if (a.endNodeId === selectedNodeId) {
-              newA.endPoint = { x: node.x + dx, y: node.y + dy };
-              updated = true;
-            }
-            return updated ? newA : a;
-          }));
-        }
+        setNodes(prev => prev.map(n => n.id === selectedNodeId ? {
+          ...n,
+          x: n.x + dx,
+          y: n.y + dy
+        } : n));
       } else if (selectedStrokeId) {
         setStrokes(prev => prev.map(s => s.id === selectedStrokeId ? {
           ...s,
           points: s.points.map((p: any) => ({ ...p, x: p.x + dx, y: p.y + dy }))
         } : s));
-      } else if (selectedArrowId) {
-        if (draggingArrowEndpoint) {
-          const coords = getCanvasCoords(e);
-          const snapNode = findNodeAtPoint(coords.x, coords.y, 20 / transform.scale);
-
-          setArrows(prev => prev.map(a => {
-            if (a.id === selectedArrowId) {
-              const newA = { ...a };
-              if (draggingArrowEndpoint === 'start') {
-                newA.startPoint = { x: coords.x, y: coords.y };
-                newA.startNodeId = snapNode ? snapNode.id : null;
-                if (snapNode) newA.startPoint = { x: snapNode.x, y: snapNode.y };
-              } else {
-                newA.endPoint = { x: coords.x, y: coords.y };
-                newA.endNodeId = snapNode ? snapNode.id : null;
-                if (snapNode) newA.endPoint = { x: snapNode.x, y: snapNode.y };
-              }
-              return newA;
-            }
-            return a;
-          }));
-        } else {
-          setArrows(prev => prev.map(a => a.id === selectedArrowId ? {
-            ...a,
-            startPoint: { x: a.startPoint.x + dx, y: a.startPoint.y + dy },
-            endPoint: { x: a.endPoint.x + dx, y: a.endPoint.y + dy },
-            startNodeId: null,
-            endNodeId: null
-          } : a));
-        }
       }
       setDragStart({ x: e.clientX, y: e.clientY });
       return;
@@ -1778,7 +1705,6 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
 
       if ((tool === 'erase' || isErasingRef.current) && (e.buttons === 1 || e.buttons === 32)) {
         setStrokes(prev => prev.filter(s => !isPointInStroke(coords.x, coords.y, s, 10)));
-        setArrows(prev => prev.filter(a => !isPointInArrow(coords.x, coords.y, a, 10 / transform.scale)));
       }
     }
 
@@ -1821,7 +1747,6 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
     setIsPanning(false);
     isPanningRef.current = false;
     setIsDragging(false);
-    setDraggingArrowEndpoint(null);
     setCurrentPressure(0);
 
     if (tool === 'pen' && isDrawingRef.current && currentStrokeRef.current) {
@@ -1865,22 +1790,6 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
       });
 
       currentShapeIdRef.current = null;
-      setTool('select');
-    }
-
-    if (isDrawingArrowRef.current) {
-      isDrawingArrowRef.current = false;
-
-      setArrows(prev => {
-        const arrow = prev.find(a => a.id === currentArrowIdRef.current);
-        if (arrow && Math.hypot(arrow.endPoint.x - arrow.startPoint.x, arrow.endPoint.y - arrow.startPoint.y) < 10) {
-          // If just a click, remove the arrow
-          return prev.filter(a => a.id !== currentArrowIdRef.current);
-        }
-        return prev;
-      });
-
-      currentArrowIdRef.current = null;
       setTool('select');
     }
 
@@ -1930,7 +1839,6 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
     if (tool === 'select') {
       setSelectedNodeId(id);
       setSelectedStrokeId(null);
-      setSelectedArrowId(null);
       if (!isLocked) {
         setIsDragging(true);
         setDragStart({ x: e.clientX, y: e.clientY });
@@ -1939,12 +1847,6 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
     } else if (tool === 'erase') {
       setNodes(nodes.filter(n => n.id !== id));
       setEdges(edges.filter(e => e.source !== id && e.target !== id));
-      setArrows(arrows.map(a => {
-        const newA = { ...a };
-        if (a.startNodeId === id) newA.startNodeId = null;
-        if (a.endNodeId === id) newA.endNodeId = null;
-        return newA;
-      }));
     }
   };
 
@@ -1981,19 +1883,10 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
           if (document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'INPUT') return;
           setNodes(nodes.filter(n => n.id !== selectedNodeId));
           setEdges(edges.filter(e => e.source !== selectedNodeId && e.target !== selectedNodeId));
-          setArrows(arrows.map(a => {
-            const newA = { ...a };
-            if (a.startNodeId === selectedNodeId) newA.startNodeId = null;
-            if (a.endNodeId === selectedNodeId) newA.endNodeId = null;
-            return newA;
-          }));
           setSelectedNodeId(null);
         } else if (selectedStrokeId && tool === 'select') {
           setStrokes(strokes.filter(s => s.id !== selectedStrokeId));
           setSelectedStrokeId(null);
-        } else if (selectedArrowId && tool === 'select') {
-          setArrows(arrows.filter(a => a.id !== selectedArrowId));
-          setSelectedArrowId(null);
         }
       } else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
@@ -2150,7 +2043,7 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('paste', handlePaste);
     };
-  }, [selectedNodeId, selectedStrokeId, selectedArrowId, tool, nodes, edges, strokes, arrows, transform]);
+  }, [selectedNodeId, selectedStrokeId, tool, nodes, edges, strokes, transform]);
 
   const performPasteFromClipboard = useCallback(async (x: number, y: number) => {
     try {
@@ -2395,101 +2288,6 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
     });
   };
 
-  const renderArrow = (arrow: any, isSelected: boolean) => {
-    const { startPoint, endPoint, style, tailHead, headArrow, weight, color } = arrow;
-    const strokeWidth = weight === 'thin' ? 1.5 : weight === 'med' ? 2.5 : 4;
-
-    let d = '';
-    if (style === 'straight') {
-      d = `M ${startPoint.x} ${startPoint.y} L ${endPoint.x} ${endPoint.y}`;
-    } else if (style === 'curved') {
-      const mx = (startPoint.x + endPoint.x) / 2;
-      const my = (startPoint.y + endPoint.y) / 2;
-      const dx = endPoint.x - startPoint.x;
-      const dy = endPoint.y - startPoint.y;
-      const offset = Math.sqrt(dx * dx + dy * dy) * 0.2;
-      const nx = -dy;
-      const ny = dx;
-      const len = Math.sqrt(nx * nx + ny * ny);
-      const cx = mx + (nx / len) * offset;
-      const cy = my + (ny / len) * offset;
-      d = `M ${startPoint.x} ${startPoint.y} Q ${cx} ${cy} ${endPoint.x} ${endPoint.y}`;
-    } else if (style === 'elbow') {
-      const mx = (startPoint.x + endPoint.x) / 2;
-      d = `M ${startPoint.x} ${startPoint.y} L ${mx} ${startPoint.y} L ${mx} ${endPoint.y} L ${endPoint.x} ${endPoint.y}`;
-    }
-
-    return (
-      <g key={arrow.id}>
-        <path
-          d={d}
-          stroke={color}
-          strokeWidth={strokeWidth}
-          fill="none"
-          markerStart={tailHead ? `url(#arrowhead-start-${arrow.id})` : undefined}
-          markerEnd={headArrow ? `url(#arrowhead-end-${arrow.id})` : undefined}
-        />
-        {isSelected && (
-          <>
-            <path
-              d={d}
-              stroke="var(--text-primary)"
-              strokeWidth={strokeWidth + 4}
-              strokeOpacity={0.2}
-              fill="none"
-            />
-            <circle
-              cx={startPoint.x}
-              cy={startPoint.y}
-              r={6 / transform.scale}
-              fill="white"
-              stroke="#3b82f6"
-              strokeWidth={2 / transform.scale}
-              style={{ cursor: 'pointer' }}
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                setSelectedArrowId(arrow.id);
-                setDraggingArrowEndpoint('start');
-                setIsDragging(true);
-                setDragStart({ x: e.clientX, y: e.clientY });
-                activePointerIdRef.current = e.pointerId;
-              }}
-            />
-            <circle
-              cx={endPoint.x}
-              cy={endPoint.y}
-              r={6 / transform.scale}
-              fill="white"
-              stroke="#3b82f6"
-              strokeWidth={2 / transform.scale}
-              style={{ cursor: 'pointer' }}
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                setSelectedArrowId(arrow.id);
-                setDraggingArrowEndpoint('end');
-                setIsDragging(true);
-                setDragStart({ x: e.clientX, y: e.clientY });
-                activePointerIdRef.current = e.pointerId;
-              }}
-            />
-          </>
-        )}
-        <defs>
-          {tailHead && (
-            <marker id={`arrowhead-start-${arrow.id}`} markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto-start-reverse">
-              <polygon points="0 0, 10 3.5, 0 7" fill={color} />
-            </marker>
-          )}
-          {headArrow && (
-            <marker id={`arrowhead-end-${arrow.id}`} markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-              <polygon points="0 0, 10 3.5, 0 7" fill={color} />
-            </marker>
-          )}
-        </defs>
-      </g>
-    );
-  };
-
   return (
     <div className="flex flex-col h-full bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-hidden">
       <div className="h-12 border-b border-[var(--border-primary)] flex items-center justify-between px-4 shrink-0 z-10 bg-[var(--bg-primary)]">
@@ -2512,13 +2310,10 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
           onToolChange={setTool}
           nodes={nodes}
           strokes={strokes}
-          arrows={arrows}
           selectedNodeId={selectedNodeId}
           selectedStrokeId={selectedStrokeId}
-          selectedArrowId={selectedArrowId}
           onSelectNode={setSelectedNodeId}
           onSelectStroke={setSelectedStrokeId}
-          onSelectArrow={setSelectedArrowId}
           onPanTo={(x: number, y: number) => {
             if (containerRef.current) {
               setTransform({
@@ -2547,13 +2342,6 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
             setTextSettings(settings);
             if (selectedNodeId) {
               setNodes(prev => prev.map(n => n.id === selectedNodeId && n.type === 'text' ? { ...n, fontFamily: settings.font, fontSize: settings.size, textColor: settings.color, backgroundColor: settings.backgroundColor, bold: settings.bold, italic: settings.italic, align: settings.align } : n));
-            }
-          }}
-          arrowSettings={arrowSettings}
-          onArrowSettingsChange={(settings: any) => {
-            setArrowSettings(settings);
-            if (selectedArrowId) {
-              setArrows(prev => prev.map(a => a.id === selectedArrowId ? { ...a, style: settings.style, tailHead: settings.tailHead, headArrow: settings.headArrow, weight: settings.weight, color: settings.color } : a));
             }
           }}
           onUndo={handleUndo}
@@ -2697,7 +2485,6 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
                 const ty = target.y + target.height / 2;
                 return <line key={edge.id} x1={sx} y1={sy} x2={tx} y2={ty} stroke="var(--text-secondary)" strokeWidth="2" markerEnd="url(#arrowhead)" />;
               })}
-              {arrows.map(arrow => renderArrow(arrow, selectedArrowId === arrow.id))}
               {sortedStrokes.map(stroke => {
                 const isSelected = selectedStrokeId === stroke.id;
                 const bounds = isSelected ? getStrokeBounds(stroke) : null;
