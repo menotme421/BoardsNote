@@ -28,6 +28,7 @@ import TableHeader from '@tiptap/extension-table-header';
 import { Node, mergeAttributes } from '@tiptap/core';
 import ListItem from '@tiptap/extension-list-item';
 import { CustomCodeBlockLowlight } from './components/code-block';
+import { storage } from './lib/storage';
 
 function remarkEscapeHtml() {
   return (tree: any) => {
@@ -988,13 +989,13 @@ const CanvasNode = React.memo(({
       }}
       onDoubleClick={handleDoubleClick}
       className={`absolute ${node.type === 'shape' ? '' : 'transition-all duration-200'} ${isNewComponent
-        ? `${isSelected ? 'ring-2 ring-blue-500/50 z-10' : 'hover:ring-1 hover:ring-blue-500/30'} ${isEditing ? 'ring-2 ring-blue-500' : ''}`
+        ? `${isSelected ? 'ring-2 ring-[var(--color-accent)]/50 z-10' : 'hover:ring-1 hover:ring-[var(--color-accent)]/30'} ${isEditing ? 'ring-2 ring-[var(--color-accent)]' : ''}`
         : isTextLike
           ? `border rounded-md ${isSelected
-            ? 'border-[var(--border-primary)] z-10'
+            ? 'border-[var(--color-accent)] z-10'
             : 'border-transparent hover:border-[var(--border-secondary)]'
-          } ${isEditing ? '!border-[var(--text-primary)] !shadow-[inset_0_0_0_1px_var(--text-primary)]' : ''}`
-          : `border ${isSelected ? 'ring-2 ring-blue-500/30 z-10' : ''}`
+          } ${isEditing ? '!border-[var(--color-accent)] !shadow-[inset_0_0_0_1px_var(--color-accent)]' : ''}`
+          : `border ${isSelected ? 'ring-2 ring-[var(--color-accent)]/30 z-10' : ''}`
         }`}
       style={{
         left: node.x,
@@ -2506,7 +2507,7 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
                         width={bounds.width + 8}
                         height={bounds.height + 8}
                         fill="none"
-                        stroke="#3b82f6"
+                        stroke="var(--color-accent)"
                         strokeWidth="2"
                       />
                     )}
@@ -3111,16 +3112,16 @@ export default function App() {
   };
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('inkframe_theme') as 'light' | 'dark';
+    const savedTheme = storage.get<'light' | 'dark'>('theme');
     if (savedTheme) setTheme(savedTheme);
-    const savedFont = localStorage.getItem('inkframe_app_font');
+    const savedFont = storage.get<string>('app_font');
     if (savedFont) {
       setAppFontClass(savedFont === 'font-dm-sans' ? 'font-inter' : savedFont);
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('inkframe_theme', theme);
+    storage.set('theme', theme);
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
@@ -3129,13 +3130,13 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem('inkframe_app_font', appFontClass);
+    storage.set('app_font', appFontClass);
   }, [appFontClass]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('inkframe_files');
+    const saved = storage.get<FileItem[]>('files');
     if (saved) {
-      setFiles(JSON.parse(saved));
+      setFiles(saved);
     } else {
       setFiles([
         { id: '1', type: 'note', title: 'Welcome Note', parentId: null, content: '<h1>Welcome to BoardsNote</h1><p>Start typing...</p>', updatedAt: Date.now() },
@@ -3148,7 +3149,7 @@ export default function App() {
   useEffect(() => {
     if (unsavedChanges) {
       const timer = setTimeout(() => {
-        localStorage.setItem('inkframe_files', JSON.stringify(files));
+        storage.set('files', files);
         setUnsavedChanges(false);
       }, 1000);
       return () => clearTimeout(timer);
@@ -3170,7 +3171,7 @@ export default function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        localStorage.setItem('inkframe_files', JSON.stringify(files));
+        storage.set('files', files);
         setUnsavedChanges(false);
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {

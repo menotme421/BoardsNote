@@ -75,6 +75,36 @@
   --color-accent: #ff6127;
   --color-accent-tint: rgba(255, 97, 39, 0.10);
   --color-accent-dark: #cc4d1f;
+
+  /* Tag Color Palette - 14 colors for sticky notes */
+  --tag-red: rgba(239, 68, 68, 0.10);
+  --tag-red-border: rgba(239, 68, 68, 0.30);
+  --tag-orange: rgba(249, 115, 22, 0.10);
+  --tag-orange-border: rgba(249, 115, 22, 0.30);
+  --tag-amber: rgba(245, 158, 11, 0.10);
+  --tag-amber-border: rgba(245, 158, 11, 0.30);
+  --tag-green: rgba(34, 197, 94, 0.10);
+  --tag-green-border: rgba(34, 197, 94, 0.30);
+  --tag-emerald: rgba(16, 185, 129, 0.10);
+  --tag-emerald-border: rgba(16, 185, 129, 0.30);
+  --tag-teal: rgba(20, 184, 166, 0.10);
+  --tag-teal-border: rgba(20, 184, 166, 0.30);
+  --tag-cyan: rgba(6, 182, 212, 0.10);
+  --tag-cyan-border: rgba(6, 182, 212, 0.30);
+  --tag-blue: rgba(59, 130, 246, 0.10);
+  --tag-blue-border: rgba(59, 130, 246, 0.30);
+  --tag-indigo: rgba(99, 102, 241, 0.10);
+  --tag-indigo-border: rgba(99, 102, 241, 0.30);
+  --tag-violet: rgba(139, 92, 246, 0.10);
+  --tag-violet-border: rgba(139, 92, 246, 0.30);
+  --tag-purple: rgba(168, 85, 247, 0.10);
+  --tag-purple-border: rgba(168, 85, 247, 0.30);
+  --tag-fuchsia: rgba(217, 70, 239, 0.10);
+  --tag-fuchsia-border: rgba(217, 70, 239, 0.30);
+  --tag-pink: rgba(236, 72, 153, 0.10);
+  --tag-pink-border: rgba(236, 72, 153, 0.30);
+  --tag-rose: rgba(244, 63, 94, 0.10);
+  --tag-rose-border: rgba(244, 63, 94, 0.30);
 }
 
 .dark {
@@ -100,6 +130,36 @@
   --color-accent: #ff6127;
   --color-accent-tint: rgba(255, 97, 39, 0.12);
   --color-accent-dark: #cc4d1f;
+
+  /* Tag Color Palette - Dark mode (12% opacity) */
+  --tag-red: rgba(239, 68, 68, 0.12);
+  --tag-red-border: rgba(239, 68, 68, 0.30);
+  --tag-orange: rgba(249, 115, 22, 0.12);
+  --tag-orange-border: rgba(249, 115, 22, 0.30);
+  --tag-amber: rgba(245, 158, 11, 0.12);
+  --tag-amber-border: rgba(245, 158, 11, 0.30);
+  --tag-green: rgba(34, 197, 94, 0.12);
+  --tag-green-border: rgba(34, 197, 94, 0.30);
+  --tag-emerald: rgba(16, 185, 129, 0.12);
+  --tag-emerald-border: rgba(16, 185, 129, 0.30);
+  --tag-teal: rgba(20, 184, 166, 0.12);
+  --tag-teal-border: rgba(20, 184, 166, 0.30);
+  --tag-cyan: rgba(6, 182, 212, 0.12);
+  --tag-cyan-border: rgba(6, 182, 212, 0.30);
+  --tag-blue: rgba(59, 130, 246, 0.12);
+  --tag-blue-border: rgba(59, 130, 246, 0.30);
+  --tag-indigo: rgba(99, 102, 241, 0.12);
+  --tag-indigo-border: rgba(99, 102, 241, 0.30);
+  --tag-violet: rgba(139, 92, 246, 0.12);
+  --tag-violet-border: rgba(139, 92, 246, 0.30);
+  --tag-purple: rgba(168, 85, 247, 0.12);
+  --tag-purple-border: rgba(168, 85, 247, 0.30);
+  --tag-fuchsia: rgba(217, 70, 239, 0.12);
+  --tag-fuchsia-border: rgba(217, 70, 239, 0.30);
+  --tag-pink: rgba(236, 72, 153, 0.12);
+  --tag-pink-border: rgba(236, 72, 153, 0.30);
+  --tag-rose: rgba(244, 63, 94, 0.12);
+  --tag-rose-border: rgba(244, 63, 94, 0.30);
 }
 
 html, body, #root {
