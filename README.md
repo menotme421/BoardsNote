@@ -1,20 +1,12 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# BoardsNote
 
-# Run and deploy your AI Studio app
+A single place to write structured notes and sketch visual ideas — without switching apps.
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/81ccb557-69df-4871-b353-b73ff87598b2
-
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- **Notes** — Rich text editor with headings, lists, tables, and code blocks
+- **Canvas** — Sticky notes, shapes, and freehand drawing
+- **Sidebar** — Create, rename, delete, favourite, and search your files
+- **Dark mode** — Easy on the eyes, always
+- **Offline ready** — Works without an internet connection
+- **No account needed** — Your data stays on your device
