@@ -609,6 +609,20 @@ svg.lucide {
   margin: 2rem 0;
 }
 
+/* Expand the hit/hover area for ProseMirror hr (divider) nodes.
+   Padding makes the element ~25px tall for pointer events while
+   the visible border line stays 1px. */
+.ProseMirror hr {
+  position: relative;
+  border: none;
+  border-top: 1px solid var(--border-primary, #e0e0e0);
+  padding: 12px 0;
+  margin: 4px 0;
+  cursor: default;
+  box-sizing: border-box;
+  background-clip: content-box;
+}
+
 /* Syntax Highlighting (Highlight.js style - atom-one-dark theme) */
 .prose pre code.hljs {
   display: block;
@@ -804,16 +818,144 @@ svg.lucide {
   border-radius: 10px;
 }
 
-.ProseMirror-dropcursor {
+.ProseMirror-dropcursor,
+.prosemirror-dropcursor-block,
+.prosemirror-dropcursor-inline {
+  background: transparent !important;
   border-top: 2px solid var(--color-accent);
   border-radius: 2px;
   margin: 2px 0;
-  opacity: 1;
+  pointer-events: none;
 }
 
 /* Fix stacking context and positioning for drag handle */
 .ProseMirror {
   position: relative;
+}
+
+/* ========================================
+   Automatic List Marker Styles by Depth
+   ======================================== */
+
+/* Base list styling - ensure proper spacing and marker visibility */
+.ProseMirror ul,
+.ProseMirror ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+  list-style-position: outside;
+}
+
+.ProseMirror li {
+  margin: 0.25em 0;
+  color: var(--color-text-primary);
+}
+
+/* Ensure nested lists have proper spacing */
+.ProseMirror li > ul,
+.ProseMirror li > ol {
+  margin: 0.25em 0 0.25em 0.5em;
+}
+
+/* ---- BULLET LIST MARKERS BY DEPTH ---- */
+
+/* Level 1: Filled disc (default) */
+.ProseMirror > ul,
+.ProseMirror ul {
+  list-style-type: disc;
+}
+
+/* Level 2: Hollow circle */
+.ProseMirror ul ul,
+.ProseMirror li > ul {
+  list-style-type: circle;
+}
+
+/* Level 3: Square */
+.ProseMirror ul ul ul,
+.ProseMirror li > ul ul,
+.ProseMirror li > li > ul {
+  list-style-type: square;
+}
+
+/* Level 4+: Repeat from square */
+.ProseMirror ul ul ul ul,
+.ProseMirror li > ul ul ul,
+.ProseMirror li > li > ul ul,
+.ProseMirror li > li > li > ul {
+  list-style-type: square;
+}
+
+/* ---- ORDERED LIST MARKERS BY DEPTH ---- */
+
+/* Level 1: Decimal (1, 2, 3) */
+.ProseMirror > ol,
+.ProseMirror ol {
+  list-style-type: decimal;
+}
+
+/* Level 2: Lower-alpha (a, b, c) */
+.ProseMirror ol ol,
+.ProseMirror li > ol {
+  list-style-type: lower-alpha;
+}
+
+/* Level 3: Lower-roman (i, ii, iii) */
+.ProseMirror ol ol ol,
+.ProseMirror li > ol ol,
+.ProseMirror li > li > ol {
+  list-style-type: lower-roman;
+}
+
+/* Level 4+: Repeat from lower-alpha */
+.ProseMirror ol ol ol ol,
+.ProseMirror li > ol ol ol,
+.ProseMirror li > li > ol ol,
+.ProseMirror li > li > li > ol {
+  list-style-type: lower-alpha;
+}
+
+/* ---- MIXED LISTS (bullet inside ordered, ordered inside bullet) ---- */
+
+/* Bullet inside ordered list - follow bullet depth rules */
+.ProseMirror ol ul {
+  list-style-type: disc;
+}
+.ProseMirror ol ul ul,
+.ProseMirror ol li > ul {
+  list-style-type: circle;
+}
+.ProseMirror ol ul ul ul,
+.ProseMirror ol li > ul ul,
+.ProseMirror ol li > li > ul {
+  list-style-type: square;
+}
+
+/* Ordered inside bullet list - follow ordered depth rules */
+.ProseMirror ul ol {
+  list-style-type: decimal;
+}
+.ProseMirror ul ol ol,
+.ProseMirror ul li > ol {
+  list-style-type: lower-alpha;
+}
+.ProseMirror ul ol ol ol,
+.ProseMirror ul li > ol ol,
+.ProseMirror ul li > li > ol {
+  list-style-type: lower-roman;
+}
+
+/* Ensure markers are visible and not clipped */
+.ProseMirror ul li::marker,
+.ProseMirror ol li::marker {
+  color: var(--color-text-primary);
+}
+
+/* Ensure proper padding at each level so markers aren't hidden */
+.ProseMirror ul ul,
+.ProseMirror ol ol,
+.ProseMirror ul ol,
+.ProseMirror ol ul {
+  padding-left: 1.5em;
 }
 
 /* Ensure drag handle parent has correct positioning */
@@ -902,7 +1044,7 @@ svg.lucide {
 /* Force all drag handles to be visible and interactive - overrides library inline styles */
 .drag-handle,
 .drag-handle-fixed,
-[data-dragging] {
+[data-dragging]:not(.ProseMirror-dropcursor) {
   visibility: visible !important;
   pointer-events: auto !important;
   display: flex !important;
@@ -1348,4 +1490,67 @@ svg.lucide {
 
 .toggle-item span {
   flex: 1;
+}
+
+/* Gutter for the drag handle — gives the handle room to sit left of the content */
+.drag-handle-container {
+  position: relative;
+  overflow: visible;
+  padding-left: 32px;
+}
+
+/* Custom Drag Handle */
+.custom-drag-handle {
+  position: absolute;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  cursor: grab;
+  user-select: none;
+  border-radius: 4px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 150ms ease;
+  pointer-events: auto;
+}
+
+.custom-drag-handle.visible {
+  opacity: 0.4;
+  visibility: visible;
+}
+
+/* Invisible bridge extending rightward from the handle toward the editor content.
+   This prevents mouseleave firing while the cursor travels between the handle
+   and the block content (especially across list padding / gutter). */
+.custom-drag-handle::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  left: -8px;
+  right: -28px;
+  pointer-events: auto;
+}
+
+.custom-drag-handle:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.custom-drag-handle:active {
+  cursor: grabbing;
+}
+
+.custom-drag-handle span {
+  font-size: 14px;
+  line-height: 1;
+  color: #909090;
+  pointer-events: none;
+}
+
+.custom-drag-handle:hover span {
+  color: #606060;
 }

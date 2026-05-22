@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
+import fs from 'fs';
 import {defineConfig, loadEnv} from 'vite';
 
 export default defineConfig(({mode}) => {
@@ -10,6 +11,24 @@ export default defineConfig(({mode}) => {
     plugins: [
       react(),
       tailwindcss(),
+      {
+        name: 'logger-middleware',
+        configureServer(server) {
+          server.middlewares.use((req, res, next) => {
+            if (req.url === '/api/log' && req.method === 'POST') {
+              let body = '';
+              req.on('data', chunk => { body += chunk; });
+              req.on('end', () => {
+                fs.appendFileSync(path.join(__dirname, 'browser.log'), body + '\n');
+                res.writeHead(200);
+                res.end('ok');
+              });
+            } else {
+              next();
+            }
+          });
+        }
+      },
       VitePWA({
         registerType: 'autoUpdate',
         manifest: {
@@ -52,3 +71,4 @@ export default defineConfig(({mode}) => {
     },
   };
 });
+// Trigger re-optimization: 1

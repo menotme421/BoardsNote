@@ -12,7 +12,6 @@ import rehypeSanitize from 'rehype-sanitize';
 import { visit } from 'unist-util-visit';
 import { EditorContent, useEditor } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
-import { DragHandle } from '@tiptap/extension-drag-handle-react';
 import StarterKit from '@tiptap/starter-kit';
 import UnderlineExtension from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
@@ -21,13 +20,18 @@ import Highlight from '@tiptap/extension-highlight';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import Image from '@tiptap/extension-image';
+import HorizontalRule from '@tiptap/extension-horizontal-rule';
 import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
+import BulletList from '@tiptap/extension-bullet-list';
+import OrderedList from '@tiptap/extension-ordered-list';
 import { Node, mergeAttributes } from '@tiptap/core';
 import ListItem from '@tiptap/extension-list-item';
 import { CustomCodeBlockLowlight } from './components/code-block';
+import { CustomDragHandle } from './components/dragHandle';
+import { NoteDropcursor } from './components/dropCursor';
 import { storage } from './lib/storage';
 
 function remarkEscapeHtml() {
@@ -86,12 +90,21 @@ const NOTE_SLASH_COMMANDS = [
   { id: 'h3', label: 'Heading 3', icon: <Heading3 size={14} /> },
   { id: 'paragraph', label: 'Paragraph', icon: <Pilcrow size={14} /> },
   { id: 'bullet', label: 'Bullet Point', icon: <List size={14} /> },
+  { id: 'ordered', label: 'Numbered List', icon: <ListOrdered size={14} /> },
   { id: 'divider', label: 'Divider', icon: <SeparatorHorizontal size={14} /> },
   { id: 'code', label: 'Code Block', icon: <SquareCode size={14} /> },
   { id: 'table', label: 'Table', icon: <Grid2x2 size={14} /> },
   { id: 'image', label: 'Image (URL)', icon: <ImageIcon size={14} /> },
   { id: 'link', label: 'URL / Link', icon: <Link2 size={14} /> },
 ];
+
+export const logToBackend = (msg: string) => {
+  fetch('/api/log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: msg
+  }).catch(() => {});
+};
 
 const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, updateFile: any, appFontClass: string, key?: string }) => {
   const [slashOpen, setSlashOpen] = useState(false);
@@ -103,9 +116,7 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
   const [formatMenuOpen, setFormatMenuOpen] = useState(false);
   const [turnMenuOpen, setTurnMenuOpen] = useState(false);
   const [isScrolling, setIsScrolling] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
   const [forceHide, setForceHide] = useState(false);
-  const [justFinishedDragging, setJustFinishedDragging] = useState(false);
   const [tableMenuOpen, setTableMenuOpen] = useState(false);
   const tableMenuOpenRef = useRef(false);
   const [tableControlPos, setTableControlPos] = useState<{ top: number; left: number } | null>(null);
@@ -133,12 +144,33 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
+        bulletList: false,
+        orderedList: false,
         listItem: false,
         codeBlock: false,
+        dropcursor: false,
+        horizontalRule: false,
+      }),
+      CustomDragHandle,
+      NoteDropcursor.configure({
+        color: false,
+        width: 2,
+        class: 'ProseMirror-dropcursor',
       }),
       CustomCodeBlockLowlight,
-      ListItem.extend({
+      BulletList.extend({
         draggable: true,
+      }),
+      OrderedList.extend({
+        draggable: true,
+      }),
+      ListItem.extend({
+        content: 'paragraph? block*',
+        draggable: true,
+      }),
+      HorizontalRule.extend({
+        draggable: true,
+        selectable: true,
       }),
       TextStyle,
       Color,
@@ -156,26 +188,6 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
         class: `outline-none min-h-[calc(100vh-220px)] prose max-w-none text-[var(--text-primary)] ${appFontClass}`,
       },
       handleDOMEvents: {
-        dragstart: () => {
-          setIsDragging(true);
-          return false;
-        },
-        dragend: () => {
-          setTimeout(() => {
-            setIsDragging(false);
-            setJustFinishedDragging(true);
-            setTimeout(() => setJustFinishedDragging(false), 500);
-          }, 100);
-          return false;
-        },
-        drop: () => {
-          setTimeout(() => {
-            setIsDragging(false);
-            setJustFinishedDragging(true);
-            setTimeout(() => setJustFinishedDragging(false), 500);
-          }, 100);
-          return false;
-        },
         contextmenu: (view, event) => {
           return false;
         },
@@ -294,37 +306,6 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
     return () => scrollEl.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Enforce drag handle visibility - prevent it from disappearing
-  useEffect(() => {
-    if (!editor) return;
-    
-    const enforceDragHandleVisibility = () => {
-      const dragHandles = document.querySelectorAll('.drag-handle-fixed, .drag-handle');
-      dragHandles.forEach(handle => {
-        // Force visibility
-        (handle as HTMLElement).style.visibility = 'visible';
-        (handle as HTMLElement).style.pointerEvents = 'auto';
-        (handle as HTMLElement).style.opacity = '0.4';
-      });
-    };
-
-    // Run immediately and periodically
-    enforceDragHandleVisibility();
-    const interval = setInterval(enforceDragHandleVisibility, 500);
-
-    // Also run on mousemove to catch hover states
-    const handleMouseMove = () => {
-      enforceDragHandleVisibility();
-    };
-    
-    document.addEventListener('mousemove', handleMouseMove, { passive: true });
-    
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('mousemove', handleMouseMove);
-    };
-  }, [editor]);
-
   useEffect(() => {
     const handleGlobalScroll = () => {
       setSlashOpen(false);
@@ -407,6 +388,7 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
     else if (id === 'h3') chain.toggleHeading({ level: 3 }).run();
     else if (id === 'paragraph') chain.setParagraph().run();
     else if (id === 'bullet') chain.toggleBulletList().run();
+    else if (id === 'ordered') chain.toggleOrderedList().run();
     else if (id === 'divider') chain.setHorizontalRule().run();
     else if (id === 'code') chain.toggleCodeBlock().run();
     else if (id === 'table') chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
@@ -479,7 +461,7 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
             />
 
             <BubbleMenu editor={editor} shouldShow={({ editor }) => {
-              if (isScrolling || isDragging || justFinishedDragging || forceHide) return false;
+              if (isScrolling || forceHide) return false;
               const { state } = editor;
               const { selection } = state;
               const { empty } = selection;
@@ -597,51 +579,6 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
 
             <div className="drag-handle-container relative min-h-[100px]">
               <EditorContent editor={editor} />
-              <div className="drag-handle-wrapper absolute left-0 top-0 w-full h-full pointer-events-none">
-                <DragHandle
-                  editor={editor}
-                  nested={{
-                    rules: [
-                      {
-                        id: 'excludeTableContent',
-                        evaluate: ({ node, $pos }) => {
-                          // Allow the table itself
-                          if (node.type.name === 'table') {
-                            return 0; // Allow table container
-                          }
-                          
-                          // Exclude tableRow, tableCell, tableHeader
-                          if (['tableRow', 'tableCell', 'tableHeader'].includes(node.type.name)) {
-                            return 1000; // Exclude table children
-                          }
-                          
-                          // Walk up ancestors to find table-related nodes (excluding table itself)
-                          let depth = $pos.depth;
-                          while (depth >= 0) {
-                            const ancestor = $pos.node(depth);
-                            if (['tableRow', 'tableCell', 'tableHeader'].includes(ancestor.type.name)) {
-                              return 1000; // Exclude nodes inside table elements
-                            }
-                            depth--;
-                          }
-                          return 0; // Allow this node
-                        }
-                      }
-                    ]
-                  }}
-                  computePositionConfig={{
-                    middleware: [
-                      {
-                        name: 'offset',
-                        fn: ({ x, y }) => ({ x: x - 40, y }),
-                      }
-                    ]
-                  }}
-                  className="drag-handle-fixed opacity-40 hover:opacity-100 !pointer-events-auto !visible transition-opacity duration-150 w-8 h-6 flex items-center justify-center text-[#909090] hover:text-[#606060] cursor-grab active:cursor-grabbing bg-transparent border-none shadow-none z-[100]"
-                >
-                  <span className="text-base leading-none select-none">⠿</span>
-                </DragHandle>
-              </div>
             </div>
           </div>
         </div>
