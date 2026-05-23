@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   MousePointer2, Hand, HandIcon, PenTool, Square, Type, 
   Eraser, Circle,
-  Undo, Redo, Trash2, Layers, Search,
+  Undo, Redo, Trash2, Layers,
   Pencil, Highlighter, Plus,
   Bold, Italic, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   GripVertical
@@ -419,69 +419,11 @@ export const CanvasToolbar = ({
   onReorderLayers
 }: any) => {
   const [showLayers, setShowLayers] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isPanning, setIsPanning] = useState(false);
 
   const handleToolSelect = (tool: string) => {
     onToolChange(tool);
   };
-
-  const searchResults = React.useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const query = searchQuery.toLowerCase();
-    
-    const results: any[] = [];
-    
-    nodes.forEach((n: any) => {
-      const idMatch = n.id.toLowerCase().includes(query);
-      const typeMatch = n.type.toLowerCase().includes(query);
-      const textMatch = n.text && n.text.toLowerCase().includes(query);
-      const shapeMatch = n.shapeType && n.shapeType.toLowerCase().includes(query);
-      
-      if (idMatch || typeMatch || textMatch || shapeMatch) {
-        let icon = <Square size={12} />;
-        let label = `Node #${n.id.substring(0, 4)}`;
-        let subLabel = '';
-        
-        if (n.type === 'text') {
-          icon = <Type size={12} />;
-          label = n.text ? (n.text.substring(0, 20) + (n.text.length > 20 ? '...' : '')) : 'Text';
-          subLabel = 'Text';
-        } else if (n.type === 'shape') {
-          icon = n.shapeType === 'circle' ? <Circle size={12} /> : <Square size={12} />;
-          label = `${n.shapeType.charAt(0).toUpperCase() + n.shapeType.slice(1)} Shape`;
-          subLabel = n.id.substring(0, 4);
-        }
-        
-        results.push({
-          id: n.id,
-          type: 'node',
-          icon,
-          label,
-          subLabel,
-          x: n.x,
-          y: n.y
-        });
-      }
-    });
-    
-    strokes.forEach((s: any) => {
-      if (s.id.toLowerCase().includes(query) || 'stroke'.includes(query)) {
-        results.push({
-          id: s.id,
-          type: 'stroke',
-          icon: <PenTool size={12} />,
-          label: `Stroke #${s.id.substring(0, 4)}`,
-          subLabel: '',
-          x: s.points && s.points.length > 0 ? s.points[0].x : 0,
-          y: s.points && s.points.length > 0 ? s.points[0].y : 0
-        });
-      }
-    });
-
-    return results;
-  }, [searchQuery, nodes, strokes]);
 
   const selectedNode = nodes.find((n: any) => n.id === selectedNodeId);
   const selectedStroke = strokes.find((s: any) => s.id === selectedStrokeId);
@@ -645,62 +587,7 @@ export const CanvasToolbar = ({
         >
           <Layers size={16} />
         </button>
-        <button
-          className={`toolbar-btn toolbar-btn-secondary ${showSearch ? 'active' : ''}`}
-          onClick={() => setShowSearch(!showSearch)}
-          title="Search"
-        >
-          <Search size={16} />
-        </button>
       </div>
-
-      {showSearch && (
-        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 bg-[var(--color-shell-bg)] border border-[var(--color-border)] rounded-lg shadow-lg p-2 w-80 animate-in fade-in slide-in-from-bottom-2 z-50">
-          <div className="relative">
-            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
-            <input
-              type="text"
-              placeholder="Search anything..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[var(--color-editor-bg)] border border-[var(--color-border)] rounded-[var(--radius-tiny)] py-1.5 pl-8 pr-2 text-xs text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-text-primary)]"
-              autoFocus
-            />
-          </div>
-          {searchQuery && (
-            <div className="mt-2 max-h-48 overflow-y-auto custom-scrollbar flex flex-col gap-1">
-              {searchResults.length > 0 ? (
-                searchResults.map(result => (
-                  <button
-                    key={result.id}
-                    className="text-left px-2 py-1.5 text-xs rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
-                    onClick={() => {
-                      if (result.type === 'stroke') {
-                        onSelectStroke(result.id);
-                      } else {
-                        onSelectNode(result.id);
-                      }
-                      if (onPanTo) {
-                        onPanTo(result.x, result.y);
-                      }
-                      setShowSearch(false);
-                      setSearchQuery('');
-                    }}
-                  >
-                    {result.icon}
-                    <div className="flex-1 truncate">
-                      <span className="font-medium">{result.label}</span>
-                      {result.subLabel && <span className="text-[var(--color-text-muted)] ml-2">{result.subLabel}</span>}
-                    </div>
-                  </button>
-                ))
-              ) : (
-                <div className="text-xs text-[var(--color-text-muted)] text-center py-2">No results found</div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
     </>
   );
 };

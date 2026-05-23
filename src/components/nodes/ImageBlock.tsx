@@ -2,16 +2,16 @@ import React from 'react';
 
 export const ImageBlock = ({ node }: any) => {
   return (
-    <div 
-      className="max-w-[480px] rounded-lg overflow-hidden shadow-sm"
+    <div
+      className="rounded-lg overflow-hidden w-full h-full"
       style={{
-        pointerEvents: 'none' // Let the parent handle dragging
+        pointerEvents: 'none'
       }}
     >
-      <img 
-        src={node.content} 
-        alt="Pasted image" 
-        className="w-full h-auto block"
+      <img
+        src={node.content}
+        alt="Pasted image"
+        className="w-full h-full object-contain block"
         draggable={false}
       />
     </div>

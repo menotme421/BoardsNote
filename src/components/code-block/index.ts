@@ -147,6 +147,22 @@ export const CustomCodeBlockLowlight = CodeBlockLowlight.extend<CodeOptions>({
 
   addKeyboardShortcuts() {
     return {
+      'Mod-a': () => {
+        const { selection } = this.editor.state;
+        const { $from } = selection;
+        for (let d = $from.depth; d > 0; d--) {
+          const node = $from.node(d);
+          if (node.type.name === 'codeBlock') {
+            const start = $from.start(d);
+            const end = $from.end(d);
+            if (start < end) {
+              this.editor.chain().focus().setTextSelection({ from: start, to: end }).run();
+            }
+            return true;
+          }
+        }
+        return false;
+      },
       'Mod-Alt-c': () => this.editor.commands.toggleCodeBlock(),
       ...this.parent?.(),
     };

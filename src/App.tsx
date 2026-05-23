@@ -48,6 +48,7 @@ import { TextBlock } from './components/nodes/TextBlock';
 import { LinkCard } from './components/nodes/LinkCard';
 import { ImageBlock } from './components/nodes/ImageBlock';
 import { IconRow } from './components/nodes/IconRow';
+import { CommandPalette } from './components/CommandPalette';
 import { getStroke } from 'perfect-freehand';
 import {
   Menu, Search, Plus, FileText, LayoutGrid,
@@ -55,13 +56,13 @@ import {
   Heading1, Heading2, Heading3, List, ListOrdered,
   Quote, Minus, Table as TableIcon, Image as ImageIcon,
   Calculator, MousePointer2, Hand, Square,
-  Circle, Type, GitMerge, Eraser, Network,
+  Circle, Type, GitMerge, Eraser, Network, PenTool,
   ChevronRight, MoreVertical, Folder, Ellipsis,
   Pilcrow, SeparatorHorizontal, SquareCode, Grid2x2, Link2,
   Sun, Moon, Settings, Cloud, Star,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Undo, Redo, Tag, Trash2, Edit2, X, CheckSquare,
-  Check, CheckCircle2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Columns, Rows, Zap, Navigation, Clipboard, Lock, PanelLeft, PanelTop, Info, Baseline, Highlighter
+  Check, CheckCircle2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Columns, Rows, Zap, Navigation, Clipboard, Lock, PanelLeft, PanelTop, Info, Baseline, Highlighter, ZoomIn, ZoomOut, Maximize
 } from 'lucide-react';
 
 type FileType = 'note' | 'canvas' | 'folder';
@@ -74,6 +75,7 @@ interface FileItem {
   content?: string;
   elements?: any;
   isOpen?: boolean;
+  createdAt: number;
   updatedAt: number;
   tags?: string[];
   isPinned?: boolean;
@@ -106,7 +108,7 @@ export const logToBackend = (msg: string) => {
   }).catch(() => {});
 };
 
-const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, updateFile: any, appFontClass: string, key?: string }) => {
+const NoteEditor = ({ file, updateFile, appFontClass, noteMeta, activeMode }: { file: FileItem, updateFile: any, appFontClass: string, noteMeta?: { wordCount: number, charCount: number, lastSaved: number, createdAt: number } | null, activeMode: 'notes' | 'canvas', key?: string }) => {
   const [slashOpen, setSlashOpen] = useState(false);
   const [slashQuery, setSlashQuery] = useState('');
   const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
@@ -159,17 +161,17 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
       }),
       CustomCodeBlockLowlight,
       BulletList.extend({
-        draggable: true,
+        draggable: false,
       }),
       OrderedList.extend({
-        draggable: true,
+        draggable: false,
       }),
       ListItem.extend({
         content: 'paragraph? block*',
-        draggable: true,
+        draggable: false,
       }),
       HorizontalRule.extend({
-        draggable: true,
+        draggable: false,
         selectable: true,
       }),
       TextStyle,
@@ -177,7 +179,32 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
       Highlight.configure({ multicolor: true }),
       Placeholder.configure({ placeholder: 'Start typing…' }),
       Image,
-      Table.configure({ resizable: true }),
+      Table.extend({
+        addKeyboardShortcuts() {
+          const parent = this.parent?.() ?? {};
+          return {
+            ...parent,
+            Backspace: () => {
+              if (parent.Backspace?.({ editor: this.editor })) return true;
+              const { $from } = this.editor.state.selection;
+              if ($from.nodeBefore?.type.name === 'table') {
+                this.editor.commands.deleteTable();
+                return true;
+              }
+              return false;
+            },
+            Delete: () => {
+              if (parent.Delete?.({ editor: this.editor })) return true;
+              const { $from } = this.editor.state.selection;
+              if ($from.nodeAfter?.type.name === 'table') {
+                this.editor.commands.deleteTable();
+                return true;
+              }
+              return false;
+            },
+          };
+        },
+      }).configure({ resizable: true }),
       TableRow,
       TableCell,
       TableHeader,
@@ -448,7 +475,7 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
         <div className="flex-grow overflow-y-auto print:p-0 bg-[var(--bg-primary)] px-10 py-8" ref={scrollContainerRef}>
           <div className="w-full max-w-4xl mx-auto pb-24">
             <input
-              className={`w-full bg-transparent border-none outline-none text-3xl font-semibold mb-5 placeholder:text-[var(--text-secondary)] ${appFontClass}`}
+              className={`w-full bg-transparent border-none outline-none text-3xl font-semibold mb-5 pl-8 placeholder:text-[var(--text-secondary)] ${appFontClass}`}
               placeholder="Untitled"
               value={file.title || ''}
               onChange={(e) => updateFile(file.id, { title: e.target.value })}
@@ -690,12 +717,20 @@ const NoteEditor = ({ file, updateFile, appFontClass }: { file: FileItem, update
               >
                 <Trash2 size={12} /> Current column
               </button>
+              <div className="h-px bg-[var(--color-border)] my-1" />
+              <button
+                className="w-full px-3 py-1.5 text-left text-[13px] flex items-center gap-2 hover:bg-red-500/10 text-red-500 transition-colors"
+                onMouseDown={(e) => { e.preventDefault(); editor.chain().deleteTable().run(); setTableMenuOpen(false); }}
+              >
+                <Trash2 size={12} /> Delete table
+              </button>
             </div>
           )}
         </div>,
         editorContainerRef.current
       )}
 
+      <PropertiesPanel activeMode={activeMode} noteMeta={noteMeta} />
     </div>
   );
 };
@@ -765,7 +800,7 @@ const CanvasNode = React.memo(({
   onResizeRef.current = onResize;
 
   const isTextLike = ['text', 'rich-text-card'].includes(node.type);
-  const isResizable = ['shape'].includes(node.type);
+  const isResizable = ['shape', 'image-block'].includes(node.type);
   const isNewComponent = ['sticky-note', 'text-block', 'link-card', 'image-block'].includes(node.type);
   const resizeHandles = [
     { key: 'nw', className: 'left-[-4px] top-[-4px] cursor-nw-resize' },
@@ -859,6 +894,17 @@ const CanvasNode = React.memo(({
         height = Math.max(minSize, startRect.height + dy);
       }
 
+      if (node.type === 'image-block' && !moveEvent.shiftKey) {
+        const ratio = startRect.width / startRect.height;
+        if (direction.includes('e') || direction.includes('w')) {
+          height = width / ratio;
+          if (direction.includes('n')) y = startRect.y + startRect.height - height;
+        } else {
+          width = height * ratio;
+          if (direction.includes('w')) x = startRect.x + startRect.width - width;
+        }
+      }
+
       nextRect = { x, y, width, height };
       applyShapeRectToDom(nextRect);
     };
@@ -912,7 +958,7 @@ const CanvasNode = React.memo(({
     <div
       ref={nodeRef}
       onPointerDown={(e) => {
-        if (node.type === 'shape' && tool === 'select' && !node.isLocked) {
+        if (tool === 'select' && !node.isLocked && !isEditing) {
           handleShapeMovePointerDown(e);
           return;
         }
@@ -925,7 +971,7 @@ const CanvasNode = React.memo(({
         }
       }}
       onDoubleClick={handleDoubleClick}
-      className={`absolute ${node.type === 'shape' ? '' : 'transition-all duration-200'} ${isNewComponent
+      className={`absolute ${isNewComponent
         ? `${isSelected ? 'ring-2 ring-[var(--color-accent)]/50 z-10' : 'hover:ring-1 hover:ring-[var(--color-accent)]/30'} ${isEditing ? 'ring-2 ring-[var(--color-accent)]' : ''}`
         : isTextLike
           ? `border rounded-md ${isSelected
@@ -937,8 +983,8 @@ const CanvasNode = React.memo(({
       style={{
         left: node.x,
         top: node.y,
-        width: (isTextLike || isNewComponent) ? 'fit-content' : node.width,
-        height: (isTextLike || isNewComponent) ? 'max-content' : node.height,
+        width: (isTextLike || (isNewComponent && node.type !== 'image-block')) ? 'fit-content' : node.width,
+        height: (isTextLike || (isNewComponent && node.type !== 'image-block')) ? 'max-content' : node.height,
         minWidth: (isTextLike || isNewComponent) ? '150px' : undefined,
         minHeight: (isTextLike || isNewComponent) ? '50px' : undefined,
         maxWidth: (isTextLike || isNewComponent) ? (node.maxWidth || 'none') : undefined,
@@ -1072,7 +1118,7 @@ const CanvasNode = React.memo(({
   );
 });
 
-const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, key?: string }) => {
+const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, updateFile: any, key?: string, pendingSelect?: any }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [tool, setTool] = useState('select');
@@ -1122,6 +1168,7 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
   const isDrawingShapeRef = useRef(false);
   const currentShapeStartRef = useRef({ x: 0, y: 0 });
   const currentShapeIdRef = useRef<string | null>(null);
+  const lastPinchDistRef = useRef<number | null>(null);
   const isPanningRef = useRef(false);
   const isErasingRef = useRef(false);
   const activePointerIdRef = useRef<number | null>(null);
@@ -1289,6 +1336,21 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
     updateFile(file.id, { elements: { nodes, edges, strokes } });
   }, [nodes, edges, strokes]);
 
+  const prevPendingRef = useRef<any>(null);
+  useEffect(() => {
+    if (!pendingSelect || pendingSelect === prevPendingRef.current) return;
+    prevPendingRef.current = pendingSelect;
+    if (pendingSelect.type === 'node') setSelectedNodeId(pendingSelect.id);
+    if (pendingSelect.type === 'stroke') setSelectedStrokeId(pendingSelect.id);
+    if (containerRef.current) {
+      setTransform({
+        x: containerRef.current.clientWidth / 2 - pendingSelect.x,
+        y: containerRef.current.clientHeight / 2 - pendingSelect.y,
+        scale: 1
+      });
+    }
+  }, [pendingSelect]);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -1300,9 +1362,8 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
 
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
-        const zoomSensitivity = 0.001;
-        const delta = -e.deltaY * zoomSensitivity;
-        const newScale = Math.min(Math.max(0.1, transform.scale * (1 + delta)), 5);
+        const factor = Math.pow(1.01, -e.deltaY / 120);
+        const newScale = Math.min(Math.max(0.1, transform.scale * factor), 5);
 
         const rect = container.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
@@ -1732,6 +1793,45 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
     }
 
     activePointerIdRef.current = null;
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      lastPinchDistRef.current = dist;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && lastPinchDistRef.current !== null) {
+      e.preventDefault();
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const ratio = dist / lastPinchDistRef.current;
+      const newScale = Math.min(Math.max(0.1, transform.scale * ratio), 5);
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (rect) {
+        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+        setTransform(prev => ({
+          x: midX - (midX - prev.x) * (newScale / prev.scale),
+          y: midY - (midY - prev.y) * (newScale / prev.scale),
+          scale: newScale
+        }));
+      } else {
+        setTransform(prev => ({ ...prev, scale: newScale }));
+      }
+      lastPinchDistRef.current = dist;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    lastPinchDistRef.current = null;
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
@@ -2234,11 +2334,21 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
           value={file.title}
           onChange={(e) => updateFile(file.id, { title: e.target.value })}
         />
-        <div className="flex items-center gap-[var(--gap-size)] text-[13px] text-[var(--text-secondary)]">
-          <span>{Math.round(transform.scale * 100)}%</span>
-          <button onClick={() => setTransform(p => ({ ...p, scale: p.scale * 1.2 }))}>+</button>
-          <button onClick={() => setTransform(p => ({ ...p, scale: p.scale / 1.2 }))}>-</button>
-          <button onClick={() => setTransform({ x: 0, y: 0, scale: 1 })}>Fit</button>
+        <div className="flex items-center gap-0.5 text-[13px] text-[var(--text-secondary)]">
+          <button className="toolbar-btn toolbar-btn-secondary" onClick={() => setTransform(p => ({ ...p, scale: Math.max(p.scale / 1.01, 0.1) }))} title="Zoom Out (Ctrl+-)">
+            <ZoomOut size={16} />
+          </button>
+          <span
+            className="font-mono min-w-[36px] text-center cursor-pointer hover:text-[var(--color-text-primary)]"
+            onDoubleClick={() => setTransform(prev => ({ ...prev, scale: 1 }))}
+            title="Double-click to reset zoom"
+          >{Math.round(transform.scale * 100)}%</span>
+          <button className="toolbar-btn toolbar-btn-secondary" onClick={() => setTransform(p => ({ ...p, scale: Math.min(p.scale * 1.01, 5) }))} title="Zoom In (Ctrl++)">
+            <ZoomIn size={16} />
+          </button>
+          <button className="toolbar-btn toolbar-btn-secondary" onClick={() => setTransform({ x: 0, y: 0, scale: 1 })} title="Reset zoom to 100%">
+            <Maximize size={16} />
+          </button>
         </div>
       </div>
 
@@ -2306,6 +2416,9 @@ const CanvasEditor = ({ file, updateFile }: { file: FileItem, updateFile: any, k
             e.preventDefault();
             setContextMenu({ x: e.clientX, y: e.clientY });
           }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
           {contextMenu && (
             <div
@@ -2522,153 +2635,6 @@ const CanvasTool = ({ icon, active, onClick }: { icon: any, active: boolean, onC
   </button>
 );
 
-const CommandPalette = ({
-  files,
-  onClose,
-  onSelect
-}: {
-  files: FileItem[],
-  onClose: () => void,
-  onSelect: (id: string) => void
-}) => {
-  const [query, setQuery] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
-
-  const filteredFiles = files.filter(f => {
-    if (!query) return true;
-    const q = query.toLowerCase();
-
-    // Contextual filters
-    if (q.startsWith('type:note') && f.type !== 'note') return false;
-    if (q.startsWith('type:canvas') && f.type !== 'canvas') return false;
-
-    const searchTerms = q.replace(/type:(note|canvas)/, '').trim();
-    if (!searchTerms) return true;
-
-    const inTitle = f.title.toLowerCase().includes(searchTerms);
-    const inTags = f.tags?.some(t => t.toLowerCase().includes(searchTerms));
-
-    // Full text search for notes
-    let inContent = false;
-    if (f.type === 'note' && f.content) {
-      // Strip HTML tags for searching
-      const textContent = f.content.replace(/<[^>]*>?/gm, '').toLowerCase();
-      inContent = textContent.includes(searchTerms);
-    }
-
-    // Search in canvas text nodes
-    if (f.type === 'canvas' && f.elements?.nodes) {
-      inContent = f.elements.nodes.some((n: any) =>
-        n.type === 'text' &&
-        n.content?.toLowerCase().includes(searchTerms)
-      );
-    }
-
-    return inTitle || inTags || inContent;
-  }).sort((a, b) => b.updatedAt - a.updatedAt);
-
-  const getPreview = (file: FileItem) => {
-    if (file.type === 'note' && file.content) {
-      const text = file.content.replace(/<[^>]*>?/gm, ' ').trim();
-      return text.length > 100 ? text.substring(0, 100) + '...' : text;
-    }
-    if (file.type === 'canvas' && file.elements?.nodes) {
-      const textNodes = file.elements.nodes.filter((n: any) => n.type === 'text');
-      if (textNodes.length > 0) {
-        const text = textNodes.map((n: any) => n.content).join(' ');
-        return text.length > 100 ? text.substring(0, 100) + '...' : text;
-      }
-      return `${file.elements.nodes.length} nodes, ${file.elements.edges?.length || 0} edges`;
-    }
-    return 'No content preview';
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center pt-[15vh] z-50" onClick={onClose}>
-      <div
-        className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[70vh]"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="p-4 border-b border-[var(--border-primary)] flex items-center gap-3">
-          <Search size={20} className="text-[var(--text-secondary)]" />
-          <input
-            ref={inputRef}
-            className="flex-1 bg-transparent outline-none text-lg text-[var(--text-primary)] placeholder-[var(--text-secondary)]"
-            placeholder="Search notes, tags, or content... (try 'type:note' or 'type:canvas')"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-          />
-          <button onClick={onClose} className="p-1 hover:bg-[var(--bg-tertiary)] rounded text-[var(--text-secondary)]">
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="overflow-y-auto p-2 flex-1">
-          {filteredFiles.length === 0 ? (
-            <div className="p-8 text-center text-[var(--text-secondary)]">
-              No results found for "{query}"
-            </div>
-          ) : (
-            <div className="flex flex-col gap-1">
-              {filteredFiles.map(f => (
-                <div
-                  key={f.id}
-                  className="p-3 rounded-lg hover:bg-[var(--bg-tertiary)] cursor-pointer flex flex-col gap-1 border border-transparent hover:border-[var(--border-primary)] transition-colors"
-                  onClick={() => {
-                    onSelect(f.id);
-                    onClose();
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="flex items-center justify-center">
-                        {f.type === 'note' ? <FileText size={18} /> : f.type === 'canvas' ? <LayoutGrid size={18} /> : '📁'}
-                      </span>
-                      <span className="font-medium text-[var(--text-primary)]">{f.title || 'Untitled'}</span>
-                    </div>
-                    <span className="text-xs text-[var(--text-secondary)]">
-                      {new Date(f.updatedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-
-                  {f.tags && f.tags.length > 0 && (
-                    <div className="flex gap-1 mt-1">
-                      {f.tags.map(tag => (
-                        <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-[var(--border-primary)] text-[var(--text-secondary)] rounded">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  <p className="text-xs text-[var(--text-secondary)] line-clamp-2 mt-1 opacity-80">
-                    {getPreview(f)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="p-2 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)] text-xs text-[var(--text-secondary)] flex justify-between">
-          <span><kbd className="bg-[var(--bg-primary)] px-1.5 py-0.5 rounded border border-[var(--border-primary)]">↑</kbd> <kbd className="bg-[var(--bg-primary)] px-1.5 py-0.5 rounded border border-[var(--border-primary)]">↓</kbd> to navigate</span>
-          <span><kbd className="bg-[var(--bg-primary)] px-1.5 py-0.5 rounded border border-[var(--border-primary)]">Enter</kbd> to select</span>
-          <span><kbd className="bg-[var(--bg-primary)] px-1.5 py-0.5 rounded border border-[var(--border-primary)]">Esc</kbd> to close</span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const SHORTCUTS = [
   { action: 'Command Palette', mac: 'Cmd + K', win: 'Ctrl + K', keywords: ['search', 'find', 'palette', 'command'] },
   { action: 'New Note', mac: 'Cmd + N', win: 'Ctrl + N', keywords: ['new', 'create', 'note'] },
@@ -2807,16 +2773,16 @@ const SettingsPage = ({ appFontClass, onAppFontChange }: { appFontClass: string,
   );
 };
 
-const HelpWidget = ({
+const PropertiesPanel = ({
   activeMode,
   noteMeta
 }: {
   activeMode: 'notes' | 'canvas',
-  noteMeta?: { wordCount: number, lastSaved: number } | null
+  noteMeta?: { wordCount: number, charCount: number, lastSaved: number, createdAt: number } | null
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedCards, setExpandedCards] = useState<Record<number, boolean>>({});
-  const widgetRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const defaultCards = activeMode === 'notes' ? [
     {
@@ -2900,7 +2866,7 @@ const HelpWidget = ({
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (widgetRef.current && !widgetRef.current.contains(e.target as HTMLElement)) {
+      if (panelRef.current && !panelRef.current.contains(e.target as HTMLElement)) {
         setIsOpen(false);
       }
     };
@@ -2928,71 +2894,78 @@ const HelpWidget = ({
   };
 
   return (
-    <div ref={widgetRef} className="fixed bottom-4 right-4 z-[300]">
+    <div ref={panelRef} className="absolute top-2 right-2 z-10">
       {isOpen && (
         <div
-          className="absolute bottom-10 right-0 w-[260px] max-h-[400px] flex flex-col bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md overflow-hidden"
+          className="absolute right-0 top-full mt-1 w-[260px] max-h-[400px] flex flex-col bg-[var(--color-editor-bg)] border border-[var(--color-border)] rounded-[var(--radius-tiny)] overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.08)]"
           style={{
-            animation: 'helpWidgetIn 150ms ease forwards',
-            boxShadow: 'none'
+            animation: 'slideInFromRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
           }}
         >
-          <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border-primary)] bg-[var(--bg-secondary)]">
-            <span className="text-[11px] font-medium text-[var(--text-secondary)]">How to…</span>
-            <button
-              onClick={() => window.open('/docs.html', '_blank')}
-              className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M7 17l9.2-9.2M17 17V7H7" />
-              </svg>
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto">
-            {defaultCards.map((card, idx) => {
-              const isExpanded = expandedCards[idx];
-              return (
-                <div key={idx} className="border-b border-[var(--border-primary)] last:border-b-0 px-[12px] py-[10px]">
-                  <button
-                    className="w-full flex items-center justify-between text-left hover:opacity-80 transition-opacity"
-                    onClick={() => toggleCard(idx)}
-                  >
-                    <span className="font-sans text-[12px] text-[var(--text-primary)]">{card.label}</span>
-                    <span className={`text-[var(--text-secondary)] transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>
-                      ›
-                    </span>
-                  </button>
-                  {isExpanded && (
-                    <div className="pt-[8px]">
-                      {card.steps.map((step, stepIdx) => (
-                        <div key={stepIdx} className="flex gap-2">
-                          <span className="font-mono text-[12px] text-[var(--text-secondary)] shrink-0">{stepIdx + 1}.</span>
-                          <span className="font-sans text-[12px] text-[var(--text-secondary)] leading-[1.7]">{step}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+          <div className="flex-1 overflow-y-auto py-2">
+            {noteMeta && (
+              <>
+                <div className="px-3 py-2">
+                  <span className="properties-label">STATISTICS</span>
+                  <div className="flex items-center gap-3 text-[13px] text-[var(--color-text-primary)]">
+                    <span>{noteMeta.wordCount} words</span>
+                    <span className="text-[var(--color-text-muted)]">|</span>
+                    <span>{noteMeta.charCount} characters</span>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
 
-          {activeMode === 'notes' && noteMeta && (
-            <div className="border-t border-[var(--border-primary)] px-3 py-2 bg-[var(--bg-secondary)]">
-              <div className="flex items-center gap-3 text-[10px] text-[var(--text-secondary)]">
-                {noteMeta.wordCount} words
-                <span className="opacity-50">|</span>
-                Last saved {new Date(noteMeta.lastSaved).toLocaleTimeString()}
+                <div className="h-px bg-[var(--color-border)] mx-3" />
+
+                <div className="px-3 py-2">
+                  <span className="properties-label">DATES</span>
+                  <div className="text-[13px] text-[var(--color-text-primary)] space-y-0.5">
+                    <div>Created {new Date(noteMeta.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                    <div className="text-[var(--color-text-muted)]">Modified {new Date(noteMeta.lastSaved).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                  </div>
+                </div>
+
+                <div className="h-px bg-[var(--color-border)] mx-3" />
+              </>
+            )}
+
+            <div className="px-3 py-2">
+              <span className="properties-label">GUIDELINES</span>
+              <div className="space-y-0.5">
+                {defaultCards.map((card, idx) => {
+                  const isExpanded = expandedCards[idx];
+                  return (
+                    <div key={idx}>
+                      <button
+                        className="w-full flex items-center justify-between text-left hover:opacity-80 transition-opacity py-1"
+                        onClick={() => toggleCard(idx)}
+                      >
+                        <span className="text-[13px] text-[var(--color-text-primary)]">{card.label}</span>
+                        <span className={`text-[var(--color-text-muted)] transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>
+                          ›
+                        </span>
+                      </button>
+                      {isExpanded && (
+                        <div className="pb-1 pl-2">
+                          {card.steps.map((step, stepIdx) => (
+                            <div key={stepIdx} className="flex gap-2 py-0.5">
+                              <span className="text-[12px] text-[var(--color-text-muted)] shrink-0">{stepIdx + 1}.</span>
+                              <span className="text-[12px] text-[var(--color-text-muted)] leading-[1.7]">{step}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          )}
+          </div>
         </div>
       )}
 
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-8 h-8 rounded-full flex items-center justify-center bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-[var(--text-secondary)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] transition-colors"
+        className="w-8 h-8 rounded-[var(--radius-tiny)] flex items-center justify-center bg-[var(--color-editor-bg)] border border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-text-primary)] hover:text-[var(--color-text-primary)] transition-colors"
       >
         <Info size={14} />
       </button>
@@ -3008,6 +2981,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isResizerHovered, setIsResizerHovered] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [pendingCanvasSelect, setPendingCanvasSelect] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [unsavedChanges, setUnsavedChanges] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -3076,9 +3050,9 @@ export default function App() {
       setFiles(saved);
     } else {
       setFiles([
-        { id: '1', type: 'note', title: 'Welcome Note', parentId: null, content: '<h1>Welcome to BoardsNote</h1><p>Start typing...</p>', updatedAt: Date.now() },
-        { id: '2', type: 'canvas', title: 'Idea Board', parentId: null, elements: { nodes: [], edges: [], strokes: [] }, updatedAt: Date.now() },
-        { id: '3', type: 'note', title: 'Documentation', parentId: null, content: '<h1>Documentation</h1><p>This is your documentation note. You can change its font using the picker above.</p><h2>Features</h2><ul><li>Rich text editing</li><li>Canvas for diagrams</li><li>Slash commands</li></ul>', updatedAt: Date.now() }
+        { id: '1', type: 'note', title: 'Welcome Note', parentId: null, content: '<h1>Welcome to BoardsNote</h1><p>Start typing...</p>', createdAt: Date.now(), updatedAt: Date.now() },
+        { id: '2', type: 'canvas', title: 'Idea Board', parentId: null, elements: { nodes: [], edges: [], strokes: [] }, createdAt: Date.now(), updatedAt: Date.now() },
+        { id: '3', type: 'note', title: 'Documentation', parentId: null, content: '<h1>Documentation</h1><p>This is your documentation note. You can change its font using the picker above.</p><h2>Features</h2><ul><li>Rich text editing</li><li>Canvas for diagrams</li><li>Slash commands</li></ul>', createdAt: Date.now(), updatedAt: Date.now() }
       ]);
     }
   }, []);
@@ -3135,6 +3109,7 @@ export default function App() {
       type,
       title: type === 'note' ? '' : `New ${type}`,
       parentId: null,
+      createdAt: Date.now(),
       updatedAt: Date.now(),
       content: type === 'note' ? '' : undefined,
       elements: type === 'canvas' ? { nodes: [], edges: [], strokes: [] } : undefined
@@ -3318,8 +3293,67 @@ export default function App() {
     if (!activeFile || activeFile.type !== 'note') return null;
     const text = (activeFile.content || '').replace(/<[^>]*>?/gm, ' ').trim();
     const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 0;
-    return { wordCount, lastSaved: activeFile.updatedAt };
+    const charCount = (activeFile.content || '').replace(/<[^>]*>/g, '').length;
+    return { wordCount, charCount, lastSaved: activeFile.updatedAt, createdAt: activeFile.createdAt ?? activeFile.updatedAt };
   }, [activeFile]);
+
+  const paletteItems = useMemo(() => {
+    if (!activeFile || activeFile.type !== 'canvas') {
+      return files.map(f => ({
+        id: f.id,
+        label: f.title || 'Untitled',
+        subLabel: f.type === 'note' ? 'Note' : 'Canvas',
+        icon: f.type === 'note' ? <FileText size={18} /> : <LayoutGrid size={18} />,
+        preview: f.type === 'note'
+          ? (f.content || '').replace(/<[^>]*>?/gm, ' ').trim().substring(0, 100)
+          : `${f.elements?.nodes?.length || 0} nodes`,
+        data: { fileType: f.type }
+      }));
+    }
+
+    const items: any[] = [];
+    const nodes = activeFile.elements?.nodes || [];
+    const strokes = activeFile.elements?.strokes || [];
+
+    nodes.forEach((n: any) => {
+      if (n.type === 'shape') {
+        items.push({
+          id: n.id,
+          label: `${n.shapeType?.charAt(0).toUpperCase() + n.shapeType?.slice(1) || 'Rect'} Shape`,
+          subLabel: 'Shape',
+          icon: n.shapeType === 'circle' ? <Circle size={18} /> : <Square size={18} />,
+          preview: n.id.substring(0, 8),
+          data: { canvasType: 'node', x: n.x, y: n.y }
+        });
+      } else {
+        const text = n.content || n.text || n.plainText || '';
+        items.push({
+          id: n.id,
+          label: text ? text.substring(0, 40) + (text.length > 40 ? '...' : '') : n.type || 'Element',
+          subLabel: n.type === 'text' ? 'Text' : n.type === 'sticky-note' ? 'Sticky Note' : n.type === 'text-block' ? 'Text Block' : n.type === 'image-block' ? 'Image' : n.type === 'link-card' ? 'Link' : n.type,
+          icon: n.type === 'text' ? <Type size={18} /> : n.type === 'image-block' ? <ImageIcon size={18} /> : n.type === 'link-card' ? <Link2 size={18} /> : <FileText size={18} />,
+          preview: n.id.substring(0, 8),
+          data: { canvasType: 'node', x: n.x, y: n.y }
+        });
+      }
+    });
+
+    strokes.forEach((s: any) => {
+      items.push({
+        id: s.id,
+        label: `Stroke #${s.id.substring(0, 4)}`,
+        subLabel: 'Drawing',
+        icon: <PenTool size={18} />,
+        data: {
+          canvasType: 'stroke',
+          x: s.points?.[0]?.x || 0,
+          y: s.points?.[0]?.y || 0
+        }
+      });
+    });
+
+    return items;
+  }, [activeFile, files]);
   const isSidebarVisible = sidebarOpen;
 
   const FileMenuDropdown = ({ file, buttonRef }: { file: FileItem, buttonRef: React.RefObject<HTMLButtonElement | null> }) => {
@@ -3618,9 +3652,9 @@ export default function App() {
           <SettingsPage appFontClass={appFontClass} onAppFontChange={setAppFontClass} />
         ) : activeFile ? (
           activeFile.type === 'note' ? (
-            <NoteEditor key={activeFile.id} file={activeFile} updateFile={updateFile} appFontClass={appFontClass} />
+            <NoteEditor key={activeFile.id} file={activeFile} updateFile={updateFile} appFontClass={appFontClass} noteMeta={noteMeta} activeMode={activeMode} />
           ) : (
-            <CanvasEditor key={activeFile.id} file={activeFile} updateFile={updateFile} />
+            <CanvasEditor key={activeFile.id} file={activeFile} updateFile={updateFile} pendingSelect={pendingCanvasSelect} />
           )
         ) : (
           <div className="h-full flex flex-col items-center justify-center gap-[var(--gap-size)] content-panel">
@@ -3631,16 +3665,20 @@ export default function App() {
       </div>
 
       {/* Command Palette */}
-      {showCommandPalette && (
-        <CommandPalette
-          files={files}
-          onClose={() => setShowCommandPalette(false)}
-          onSelect={(id) => {
-            setActiveFileId(id);
-            setShowSettings(false);
-          }}
-        />
-      )}
+      <CommandPalette
+        isOpen={showCommandPalette}
+        onClose={() => { setShowCommandPalette(false); setPendingCanvasSelect(null); }}
+        items={paletteItems}
+        placeholder={activeFile?.type === 'canvas' ? 'Search canvas elements...' : "Search notes, tags, or content... (try 'type:note' or 'type:canvas')"}
+        onSelect={(item) => {
+          if (item.data?.canvasType) {
+            setPendingCanvasSelect({ id: item.id, type: item.data.canvasType, x: item.data.x, y: item.data.y });
+          } else {
+            setActiveFileId(item.id);
+          }
+          setShowSettings(false);
+        }}
+      />
 
       {/* Delete Confirmation Modal */}
       {filesToDelete && filesToDelete.length > 0 && (
@@ -3670,7 +3708,6 @@ export default function App() {
           </div>
         </div>
       )}
-      <HelpWidget activeMode={activeMode} noteMeta={noteMeta} />
     </div>
   );
 }
