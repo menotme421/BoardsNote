@@ -828,6 +828,12 @@ svg.lucide {
   pointer-events: none;
 }
 
+[data-custom-note-dragging="true"] .ProseMirror-dropcursor,
+[data-custom-note-dragging="true"] .prosemirror-dropcursor-block,
+[data-custom-note-dragging="true"] .prosemirror-dropcursor-inline {
+  display: none !important;
+}
+
 /* Fix stacking context and positioning for drag handle */
 .ProseMirror {
   position: relative;

@@ -34,13 +34,16 @@ const EXCLUDED_TYPES = new Set([
 ]);
 
 interface ListItemBlock {
-  pos: number;
+  start: number;
   end: number;
   node: ProseMirrorNode;
 }
 
+const DROPCURSOR_SELECTORS =
+  '.ProseMirror-dropcursor, .prosemirror-dropcursor-block, .prosemirror-dropcursor-inline';
+
 /** Vertical padding added above/below each list row hit band. */
-const LIST_ROW_PAD_Y = 36;
+const LIST_ROW_PAD_Y = 18;
 /** Minimum list row hit height (px). */
 const LIST_ROW_MIN_HEIGHT = 40;
 
@@ -66,19 +69,21 @@ function findInnermostListItemElement(
   return null;
 }
 
-/** Map a DOM <li> to its ProseMirror listItem node (exact nodeDOM match). */
-function getListItemForLI(
-  view: EditorView,
-  li: HTMLElement,
+/** Resolve the innermost listItem node containing a given document position. */
+function resolveListItemAt(
+  pos: number,
+  doc: ProseMirrorNode,
 ): ListItemBlock | null {
-  let match: ListItemBlock | null = null;
-  view.state.doc.descendants((node, pos) => {
-    if (node.type.name !== 'listItem') return;
-    if (view.nodeDOM(pos) === li) {
-      match = { pos, end: pos + node.nodeSize, node };
+  const clamped = Math.min(Math.max(pos, 0), doc.content.size);
+  const $pos = doc.resolve(clamped < doc.content.size ? clamped + 1 : clamped);
+  for (let d = $pos.depth; d >= 1; d--) {
+    if ($pos.node(d).type.name === 'listItem') {
+      const node = $pos.node(d);
+      const start = $pos.before(d);
+      return { start, end: start + node.nodeSize, node };
     }
-  });
-  return match;
+  }
+  return null;
 }
 
 /**
@@ -90,7 +95,7 @@ function getListItemRowRect(
   item: ListItemBlock,
   editorRect: DOMRect,
 ): DOMRect {
-  const dom = view.nodeDOM(item.pos);
+  const dom = view.nodeDOM(item.start);
   if (!(dom instanceof HTMLElement)) {
     return new DOMRect(
       editorRect.left,
@@ -166,6 +171,34 @@ function getPointerAnchorRect(
   const line =
     fallbackDom.querySelector('p, h1, h2, h3, h4, h5, h6') ?? fallbackDom;
   return (line as HTMLElement).getBoundingClientRect();
+}
+
+function removeNativeDropCursors(view: EditorView) {
+  view.dom.ownerDocument
+    .querySelectorAll(DROPCURSOR_SELECTORS)
+    .forEach((element) => element.remove());
+}
+
+function getListInsertIndicatorRect(
+  view: EditorView,
+  clientX: number,
+  clientY: number,
+): DOMRect | null {
+  const target = resolveListItemTargetFromCoords(view, clientX, clientY);
+  if (!target) return null;
+
+  const item: ListItemBlock = {
+    start: target.pos,
+    end: target.pos + target.node.nodeSize,
+    node: target.node,
+  };
+  const row = getListItemRowRect(view, item, getEditorContentRect(view));
+  const anchor = target.anchorRect.height > 0 ? target.anchorRect : row;
+  const y = clientY < anchor.top + anchor.height / 2 ? anchor.top : anchor.bottom;
+  const left = Math.max(getEditorContentRect(view).left, anchor.left);
+  const width = Math.max(32, Math.min(anchor.width, getEditorContentRect(view).right - left));
+
+  return new DOMRect(left, y, width, 2);
 }
 
 const BLOCK_ROW_PAD_Y = 22;
@@ -284,7 +317,7 @@ function getAllListItems(doc: ProseMirrorNode): ListItemBlock[] {
   const items: ListItemBlock[] = [];
   doc.descendants((node, pos) => {
     if (node.type.name === 'listItem') {
-      items.push({ pos, end: pos + node.nodeSize, node });
+      items.push({ start: pos, end: pos + node.nodeSize, node });
     }
   });
   return items;
@@ -352,6 +385,42 @@ function isListNode(node: ProseMirrorNode): boolean {
   return node.type.name === 'bulletList' || node.type.name === 'orderedList';
 }
 
+function isLastSiblingInList(doc: ProseMirrorNode, listItemPos: number): boolean {
+  const $pos = doc.resolve(Math.min(listItemPos + 1, doc.content.size));
+  for (let d = $pos.depth; d >= 1; d--) {
+    if ($pos.node(d).type.name === 'listItem') {
+      const parentDepth = d - 1;
+      if (parentDepth >= 1 && isListNode($pos.node(parentDepth))) {
+        const parent = $pos.node(parentDepth);
+        const itemIndex = $pos.index(parentDepth);
+        return itemIndex === parent.childCount - 1;
+      }
+    }
+  }
+  return false;
+}
+
+function shareParentList(
+  doc: ProseMirrorNode,
+  posA: number,
+  posB: number,
+): boolean {
+  const $a = doc.resolve(Math.min(posA + 1, doc.content.size));
+  const $b = doc.resolve(Math.min(posB + 1, doc.content.size));
+
+  let listPosA = -1;
+  let listPosB = -1;
+
+  for (let d = $a.depth; d >= 1; d--) {
+    if (isListNode($a.node(d))) { listPosA = $a.before(d); break; }
+  }
+  for (let d = $b.depth; d >= 1; d--) {
+    if (isListNode($b.node(d))) { listPosB = $b.before(d); break; }
+  }
+
+  return listPosA !== -1 && listPosA === listPosB;
+}
+
 /**
  * Insert before/after the listItem row under the pointer (any nesting depth).
  * Supports reordering siblings and moving a child item above its parent row.
@@ -366,13 +435,15 @@ function resolveListItemInsertPosFromCoords(
 
   const editorRect = getEditorContentRect(view);
   const item: ListItemBlock = {
-    pos: target.pos,
+    start: target.pos,
     end: target.pos + target.node.nodeSize,
     node: target.node,
   };
   const row = getListItemRowRect(view, item, editorRect);
+  const insertSplitRect = target.anchorRect.height > 0 ? target.anchorRect : row;
+  const insertMidY = insertSplitRect.top + insertSplitRect.height / 2;
 
-  if (clientY < row.top + row.height / 2) {
+  if (clientY < insertMidY) {
     return target.pos;
   }
   return item.end;
@@ -388,11 +459,11 @@ function collectListItemTargets(
   const targets: DragTarget[] = [];
 
   for (const item of getAllListItems(view.state.doc)) {
-    const dom = view.nodeDOM(item.pos);
+    const dom = view.nodeDOM(item.start);
     if (!(dom instanceof HTMLElement)) continue;
     const rowRect = getListItemRowRect(view, item, editorRect);
     targets.push(
-      finishDragTarget(view, clientX, clientY, item.node, item.pos, dom, rowRect),
+      finishDragTarget(view, clientX, clientY, item.node, item.start, dom, rowRect),
     );
   }
 
@@ -409,22 +480,29 @@ function resolveListItemTargetFromCoords(
   const innerLi = findInnermostListItemElement(pointEl, view.dom);
 
   if (innerLi) {
-    const item = getListItemForLI(view, innerLi);
-    if (item) {
-      const dom = view.nodeDOM(item.pos);
-      if (dom instanceof HTMLElement) {
-        const editorRect = getEditorContentRect(view);
-        const rowRect = getListItemRowRect(view, item, editorRect);
-        return finishDragTarget(
-          view,
-          clientX,
-          clientY,
-          item.node,
-          item.pos,
-          dom,
-          rowRect,
-        );
+    try {
+      const domPos = view.posAtDOM(innerLi, 0);
+      if (domPos > 0) {
+        const item = resolveListItemAt(domPos, view.state.doc);
+        if (item) {
+          const dom = view.nodeDOM(item.start);
+          if (dom instanceof HTMLElement) {
+            const editorRect = getEditorContentRect(view);
+            const rowRect = getListItemRowRect(view, item, editorRect);
+            return finishDragTarget(
+              view,
+              clientX,
+              clientY,
+              item.node,
+              item.start,
+              dom,
+              rowRect,
+            );
+          }
+        }
       }
+    } catch {
+      // element not in editor DOM — fall through to row-band hit-test
     }
   }
 
@@ -503,7 +581,6 @@ function moveBlockRange(
   slice: Slice,
 ): Transaction | null {
   if (insertPos >= sourceStart && insertPos < sourceEnd) {
-    console.log('[moveBlockRange] ABORT: insertPos', insertPos, 'is inside source range', sourceStart, '-', sourceEnd);
     return null;
   }
 
@@ -524,73 +601,42 @@ function moveBlockRange(
     if ($check.node(d).type.name === 'listItem') {
       const parent = $check.node(d - 1);
       if (isListNode(parent) && parent.childCount === 1) {
-        deleteFrom = $check.before(d - 1);
-        deleteTo = $check.after(d - 1);
-        console.log('[moveBlockRange] Expanded delete to UL range:', deleteFrom, '-', deleteTo);
+        const expandedFrom = $check.before(d - 1);
+        const expandedTo = $check.after(d - 1);
+
+        // Guard 1: Never expand to a range starting at 0 — would include title node
+        if (expandedFrom === 0) {
+          break;
+        }
+
+        // Guard 2: The expanded range must be exactly a list wrapper.
+        const expandedNode = tr.doc.nodeAt(expandedFrom);
+        if (!expandedNode || !isListNode(expandedNode) || expandedFrom + expandedNode.nodeSize !== expandedTo) {
+          break;
+        }
+
+        deleteFrom = expandedFrom;
+        deleteTo = expandedTo;
       }
       break;
     }
   }
 
   if (insertPos < sourceStart) {
-    console.log('[moveBlockRange] insertPos < sourceStart case');
-    console.log('[moveBlockRange] Before insert - sourceStart:', sourceStart, 'sourceEnd:', sourceEnd);
-    console.log('[moveBlockRange] Deleting from', deleteFrom, 'to', deleteTo, '(size:', deleteTo - deleteFrom, ')');
     tr = tr.delete(deleteFrom, deleteTo);
-    console.log('[moveBlockRange] After delete, doc size:', tr.doc.content.size);
     const mappedInsert = tr.mapping.map(insertPos, -1);
-    console.log('[moveBlockRange] After delete - insert at:', mappedInsert);
-    console.log('[moveBlockRange] Slice openStart:', closed.openStart, 'openEnd:', closed.openEnd);
-    console.log('[moveBlockRange] Slice content:', closed.content.childCount, 'children, total size:', closed.content.size);
-    console.log('[moveBlockRange] Inserting slice with', closed.content.size, 'nodes');
-    // Use replace instead of insert to preserve slice structure
     tr = tr.replace(mappedInsert, mappedInsert, closed);
-    console.log('[moveBlockRange] After insert, doc size:', tr.doc.content.size);
-    console.log('[moveBlockRange] Expected size:', 102 + closed.content.size, 'Actual:', tr.doc.content.size);
   } else if (insertPos === sourceEnd) {
-    // When insertPos equals sourceEnd, the drop is at the boundary
-    // between the source and the next sibling.  "Delete first, then insert"
-    // maps insertPos back to sourceStart — a no-op.  "Insert first, then
-    // delete" also produces a no-op (the copy shifts back after the delete).
-    // Instead: delete the source first, then place it AFTER the next sibling.
-    console.log('[moveBlockRange] insertPos === sourceEnd case — delete first, insert past next sibling');
-    console.log('[moveBlockRange] Deleting source at', deleteFrom, '-', deleteTo, '(size:', deleteTo - deleteFrom, ')');
+    // Boundary case: drop cursor at the source's end edge.
+    // Delete first, then insert at the mapped position.
+    // The mapped position is authoritative — ProseMirror's schema
+    // handles auto-wrapping (e.g. re-wrapping a listItem in a UL).
     tr = tr.delete(deleteFrom, deleteTo);
-    console.log('[moveBlockRange] After delete, doc size:', tr.doc.content.size);
     const mappedInsert = tr.mapping.map(insertPos, -1);
-    console.log('[moveBlockRange] Mapped insertPos:', mappedInsert);
-    // Find the node that starts at mappedInsert (the next sibling) by
-    // walking up the resolved position's depth.  $pos.nodeAfter is wrong
-    // because it returns the *first child* of the node at this position,
-    // not the node itself.
-    const $next = tr.doc.resolve(mappedInsert);
-    let nextSize = 0;
-    for (let d = $next.depth; d >= 1; d--) {
-      if ($next.before(d) === mappedInsert) {
-        nextSize = $next.node(d).nodeSize;
-        break;
-      }
-    }
-    const lastChildOfDoc = tr.doc.lastChild;
-    const hasTrailingPara =
-      lastChildOfDoc !== null && isEmptyTrailingParagraph(lastChildOfDoc);
-    const docContentEnd = hasTrailingPara
-      ? tr.doc.content.size - lastChildOfDoc!.nodeSize
-      : tr.doc.content.size;
-    const pasteAt = nextSize > 0 ? mappedInsert + nextSize : docContentEnd;
-    if (nextSize > 0) {
-      console.log('[moveBlockRange] Next sibling at', mappedInsert, 'size', nextSize, '— pasting at', pasteAt);
-    } else {
-      console.log('[moveBlockRange] No next sibling at', mappedInsert, '— pasting at end:', pasteAt);
-    }
-    console.log('[moveBlockRange] Inserting slice at', pasteAt, '(size:', closed.content.size, ')');
-    tr = tr.replace(pasteAt, pasteAt, closed);
-    console.log('[moveBlockRange] After insert, doc size:', tr.doc.content.size);
+    tr = tr.replace(mappedInsert, mappedInsert, closed);
   } else {
-    console.log('[moveBlockRange] insertPos > sourceEnd case');
     tr = tr.delete(deleteFrom, deleteTo);
     const mappedInsert = tr.mapping.map(insertPos, -1);
-    // Use replace instead of insert to preserve slice structure
     tr = tr.replace(mappedInsert, mappedInsert, closed);
   }
 
@@ -651,6 +697,7 @@ function resolveTargetFromCoords(
 function createDragHandlePlugin() {
   let dragSourcePos: number | null = null;
   let dragSourceNode: ProseMirrorNode | null = null;
+  let isDraggingGlobal = false;
 
   return new Plugin({
     key: DRAG_HANDLE_PLUGIN_KEY,
@@ -667,18 +714,14 @@ function createDragHandlePlugin() {
           return false;
         },
         drop: (view, event) => {
-          if (
-            dragSourcePos !== null &&
-            dragSourcePos !== undefined &&
-            dragSourceNode
-          ) {
+          if (isDraggingGlobal) {
             event.preventDefault();
             return true;
           }
           return false;
         },
         dragover: (view, event) => {
-          if (dragSourceNode) {
+          if (isDraggingGlobal) {
             event.preventDefault();
             return true;
           }
@@ -706,11 +749,50 @@ function createDragHandlePlugin() {
       wrapper.style.overflow = 'visible';
       wrapper.appendChild(handle);
 
-      let isDragging = false;
+
+      let isLocalDragging = false;
       let hideTimeout: number | null = null;
       let preResolvedDragPos: number | null = null;
       let preResolvedDragNode: ProseMirrorNode | null = null;
       let isHandleFocused = false; // Lock flag: prevents position updates when cursor is on handle
+      const handledDropEvents = new WeakSet<DragEvent>();
+      const dropIndicator = document.createElement('div');
+      dropIndicator.className = 'custom-drag-drop-indicator';
+      dropIndicator.style.position = 'absolute';
+      dropIndicator.style.height = '2px';
+      dropIndicator.style.background = 'var(--color-accent)';
+      dropIndicator.style.borderRadius = '999px';
+      dropIndicator.style.boxShadow = '0 0 0 1px color-mix(in srgb, var(--color-accent) 30%, transparent)';
+      dropIndicator.style.pointerEvents = 'none';
+      dropIndicator.style.zIndex = '60';
+      dropIndicator.style.opacity = '0';
+      dropIndicator.style.visibility = 'hidden';
+      wrapper.appendChild(dropIndicator);
+
+      function hideDropIndicator() {
+        dropIndicator.style.opacity = '0';
+        dropIndicator.style.visibility = 'hidden';
+      }
+
+      function showDropIndicator(rect: DOMRect) {
+        const wrapperRect = wrapper!.getBoundingClientRect();
+        dropIndicator.style.left = `${rect.left - wrapperRect.left + wrapper!.scrollLeft}px`;
+        dropIndicator.style.top = `${rect.top - wrapperRect.top + wrapper!.scrollTop}px`;
+        dropIndicator.style.width = `${rect.width}px`;
+        dropIndicator.style.opacity = '1';
+        dropIndicator.style.visibility = 'visible';
+      }
+
+      function clearCustomDragState() {
+        isDraggingGlobal = false;
+        isLocalDragging = false;
+        dragSourcePos = null;
+        dragSourceNode = null;
+        isHandleFocused = false;
+        hideDropIndicator();
+        removeNativeDropCursors(view);
+        view.dom.ownerDocument.documentElement.removeAttribute('data-custom-note-dragging');
+      }
 
       function scheduleHide() {
         if (hideTimeout) return;
@@ -743,10 +825,43 @@ function createDragHandlePlugin() {
         preResolvedDragNode = null;
       }
 
+      function updateDropIndicator(event: DragEvent) {
+        removeNativeDropCursors(view);
+
+        if (!dragSourceNode) {
+          hideDropIndicator();
+          return;
+        }
+
+        if (dragSourceNode.type.name === 'listItem') {
+          const rect = getListInsertIndicatorRect(view, event.clientX, event.clientY);
+          if (rect) {
+            showDropIndicator(rect);
+          } else {
+            hideDropIndicator();
+          }
+          return;
+        }
+
+        const target = resolveTargetFromCoords(
+          view,
+          event.clientX,
+          event.clientY,
+          document.elementFromPoint(event.clientX, event.clientY),
+        );
+        if (!target) {
+          hideDropIndicator();
+          return;
+        }
+        const anchor = target.anchorRect.height > 0 ? target.anchorRect : target.rowRect;
+        const y = event.clientY < target.rowRect.top + target.rowRect.height / 2 ? anchor.top : anchor.bottom;
+        showDropIndicator(new DOMRect(anchor.left, y, Math.max(32, anchor.width), 2));
+      }
+
       let rafId: number | null = null;
 
       const onMouseMove = (e: MouseEvent) => {
-        if (isDragging) return;
+        if (isLocalDragging) { return; }
         if (!view.editable) {
           hideHandle();
           return;
@@ -809,8 +924,15 @@ function createDragHandlePlugin() {
               const lineHeight = visualRect.height > 60 ? 24 : visualRect.height;
               const top = visualRect.top - wrapperRect.top + wrapper!.scrollTop + (lineHeight - handleHeight) / 2;
               
-              // Horizontal: node's left edge - 28px
-              const left = visualRect.left - wrapperRect.left - 28;
+              // Horizontal: structural block's left edge - 28px
+              const blockDOM = view.nodeDOM(preResolvedDragPos);
+              const refEl = blockDOM instanceof HTMLElement && blockDOM.tagName === 'LI'
+                ? blockDOM.parentElement
+                : blockDOM;
+              const blockRect = (refEl as HTMLElement)?.getBoundingClientRect();
+              const left = blockRect
+                ? blockRect.left - wrapperRect.left - 28
+                : visualRect.left - wrapperRect.left - 28;
               
               handle.style.top = `${top}px`;
               handle.style.left = `${left}px`;
@@ -819,81 +941,90 @@ function createDragHandlePlugin() {
 
           // ============================================================
           // STEP B — PROSEMIRROR RESOLUTION (drag identity only)
-          // Produces: { pos, node } for drag source
-          // Uses view.posAtCoords — completely independent of Step A
+          // Resolved position then drives Step A (handle visual placement).
           // ============================================================
-          // Lock guard: skip resolution if handle is focused (cursor is on handle)
-          if (isHandleFocused) {
-            return;
-          }
-          
-          const pmPos = view.posAtCoords({ left: clientX, top: clientY });
-          if (pmPos) {
-            // Fix 3: Guard against pos: 0 — filter out invalid root positions
-            const contentStart = 1; // Position 0 is always document root
-            if (pmPos.pos < contentStart) {
-              // Discard invalid position, keep previous valid one
-              return;
-            }
-            
-            // Use view.nodeDOM to find the actual DOM element and map it to a ProseMirror position
-            // This ensures we get the correct node boundary position
-            let targetPos: number | null = null;
-            let targetNode: ProseMirrorNode | null = null;
-            
-            // Try to find the node by walking through all nodes and matching DOM
-            const resolvedPos = view.state.doc.resolve(pmPos.pos);
-            
-            // For listItem, find it via DOM element matching
-            const domElement = document.elementFromPoint(clientX, clientY);
-            if (domElement) {
-              const liElement = domElement.closest('li');
-              if (liElement) {
-                // Find which listItem this DOM element corresponds to
-                view.state.doc.descendants((node, pos) => {
-                  if (node.type.name === 'listItem') {
-                    const nodeDom = view.nodeDOM(pos);
-                    if (nodeDom === liElement) {
-                      targetPos = pos;
-                      targetNode = node;
-                      return false; // Stop searching
-                    }
-                  }
-                });
+          if (!isHandleFocused) {
+            const pmPos = view.posAtCoords({ left: clientX, top: clientY });
+            const doc = view.state.doc;
+
+            if (pmPos) {
+              const firstChild = doc.firstChild;
+              const contentStart = firstChild && (firstChild.type.name === 'heading' || firstChild.type.name === 'title')
+                ? firstChild.nodeSize
+                : 0;
+
+              let targetPos: number | null = null;
+              let targetNode: ProseMirrorNode | null = null;
+
+              // 1 — Try listItem ancestor
+              const listItem = resolveListItemAt(pmPos.pos, doc);
+              if (listItem && listItem.start >= contentStart) {
+                targetPos = listItem.start;
+                targetNode = listItem.node;
               }
-            }
-            
-            // If not a listItem, use the resolved position directly
-            if (!targetPos) {
-              // Walk up to find the correct block node
-              for (let depth = resolvedPos.depth; depth >= 0; depth--) {
-                if (depth === 0 || resolvedPos.node(depth - 1)?.type.name === 'doc') {
-                  const node = resolvedPos.node(depth);
-                  if (node.isBlock && !EXCLUDED_TYPES.has(node.type.name)) {
-                    targetPos = depth === 0 ? pmPos.pos : resolvedPos.before(depth);
-                    targetNode = node;
-                    break;
+
+              // 2 — Fallback to doc-level block walk
+              if (targetPos === null) {
+                const resolvedPos = doc.resolve(pmPos.pos);
+                for (let depth = resolvedPos.depth; depth >= 0; depth--) {
+                  if (depth === 0 || resolvedPos.node(depth - 1)?.type.name === 'doc') {
+                    const node = resolvedPos.node(depth);
+                    if (node.isBlock && !EXCLUDED_TYPES.has(node.type.name)) {
+                      targetPos = depth === 0 ? pmPos.pos : resolvedPos.before(depth);
+                      targetNode = node;
+                      break;
+                    }
                   }
                 }
               }
-            }
-            
-            // Store the resolved position and node for drag operations
-            if (targetPos !== null && targetNode !== null && targetPos >= contentStart) {
-              preResolvedDragPos = targetPos;
-              preResolvedDragNode = targetNode;
-              console.log('[DragHandle Step B] Resolved pos:', targetPos, 'nodeType:', targetNode.type.name);
+
+              if (targetPos !== null && targetNode !== null && targetPos >= contentStart) {
+                preResolvedDragPos = targetPos;
+                preResolvedDragNode = targetNode;
+              }
             }
           }
-          
-          // Show handle ONLY if we have a valid non-zero position
-          // This ensures the frozen position is always correct for the node the handle is sitting on
+
+          // ============================================================
+          // STEP A — VISUAL POSITIONING (driven by Step B's result)
+          // ============================================================
           if (preResolvedDragPos !== null && preResolvedDragNode !== null && preResolvedDragPos >= 1) {
+            const nodeDom = view.nodeDOM(preResolvedDragPos);
+            if (nodeDom instanceof HTMLElement && view.dom.contains(nodeDom)) {
+              let visualEl: HTMLElement = nodeDom;
+              if (nodeDom.tagName === 'LI') {
+                const innerContent = nodeDom.querySelector(':scope > p, :scope > div:not(ul):not(ol)');
+                visualEl = (innerContent instanceof HTMLElement) ? innerContent : nodeDom;
+              } else if (preResolvedDragNode.type.name === 'table') {
+                const tableEl = nodeDom.querySelector('table') ?? nodeDom.querySelector('.tableWrapper') ?? nodeDom;
+                if (tableEl instanceof HTMLElement) visualEl = tableEl;
+              } else {
+                const firstLine = nodeDom.querySelector(':scope > p, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6');
+                if (firstLine instanceof HTMLElement) visualEl = firstLine;
+              }
+
+              const visualRect = visualEl.getBoundingClientRect();
+              const wrapperRect = wrapper!.getBoundingClientRect();
+              const handleHeight = handle.offsetHeight || 24;
+              const lineHeight = visualRect.height > 60 ? 24 : visualRect.height;
+              const top = visualRect.top - wrapperRect.top + wrapper!.scrollTop + (lineHeight - handleHeight) / 2;
+              const blockDOM = view.nodeDOM(preResolvedDragPos);
+              const refEl = blockDOM instanceof HTMLElement && blockDOM.tagName === 'LI'
+                ? blockDOM.parentElement
+                : blockDOM;
+              const blockRect = (refEl as HTMLElement)?.getBoundingClientRect();
+              const left = blockRect
+                ? blockRect.left - wrapperRect.left - 28
+                : visualRect.left - wrapperRect.left - 28;
+
+              handle.style.top = `${top}px`;
+              handle.style.left = `${left}px`;
+            }
+
             cancelHide();
             handle.style.opacity = '1';
             handle.style.visibility = 'visible';
           } else {
-            // Hide handle if no valid position resolved
             handle.style.opacity = '0';
             handle.style.visibility = 'hidden';
           }
@@ -901,7 +1032,7 @@ function createDragHandlePlugin() {
       };
 
       const onMouseLeave = () => {
-        if (!isDragging) scheduleHide();
+        if (!isLocalDragging) scheduleHide();
       };
 
       const onMouseEnter = () => cancelHide();
@@ -910,65 +1041,42 @@ function createDragHandlePlugin() {
       const onHandleMouseEnter = () => {
         isHandleFocused = true;
         cancelHide();
-        console.log('[DragHandle] Handle focused - position locked at:', preResolvedDragPos, preResolvedDragNode?.type.name);
       };
       
       // Unlock position when cursor leaves the handle
       const onHandleMouseLeave = () => {
         isHandleFocused = false;
-        console.log('[DragHandle] Handle unfocused - position updates resumed');
         scheduleHide();
       };
 
       let dragImageEl: HTMLElement | null = null;
 
       const onDragStart = (event: DragEvent) => {
+        isDraggingGlobal = true;
+        view.dom.ownerDocument.documentElement.setAttribute('data-custom-note-dragging', 'true');
+        removeNativeDropCursors(view);
         event.stopPropagation();
-        if (isDragging) return;
-        if (!event.dataTransfer) return;
-
-        console.log('[DragStart] preResolvedDragPos:', preResolvedDragPos, 'preResolvedDragNode:', preResolvedDragNode?.type.name);
-        console.log('[DragStart] isHandleFocused:', isHandleFocused, '(position should be locked)');
-
-        // Use ONLY the pre-resolved position from Step B - no override
-        const actualPos = preResolvedDragPos;
-        const actualNode = preResolvedDragNode;
-
-        console.log('[DragStart] actualPos:', actualPos, 'actualNode:', actualNode?.type.name);
-
-        if (actualPos === null || actualPos === undefined || !actualNode) {
-          console.log('[DragStart] ABORT: No valid position resolved');
-          isDragging = true;
+        if (isLocalDragging) return;
+        if (!event.dataTransfer) {
+          clearCustomDragState();
           return;
         }
 
-        const range = getBlockRange(
-          view.state.doc,
-          actualPos,
-          actualNode.type.name,
-        );
-        console.log('[DragStart] range:', range ? { start: range.start, end: range.end, nodeType: range.node.type.name } : null);
-        
-        // Fix 1: Handle listItem separately if getBlockRange returned null
-        let finalRange = range;
-        if (!finalRange && actualNode.type.name === 'listItem') {
-          // Build range manually for listItem using ancestor chain
-          const $pos = view.state.doc.resolve(Math.min(actualPos + 1, view.state.doc.content.size));
-          for (let depth = $pos.depth; depth >= 1; depth--) {
-            if ($pos.node(depth).type.name === 'listItem') {
-              const node = $pos.node(depth);
-              const start = $pos.before(depth);
-              const end = $pos.after(depth);
-              finalRange = { start, end, node };
-              console.log('[DragStart] Manual listItem range:', { start, end, nodeType: node.type.name });
-              break;
-            }
-          }
+        const actualPos = preResolvedDragPos;
+        const actualNode = preResolvedDragNode;
+
+        if (actualPos === null || actualPos === undefined || !actualNode) {
+          clearCustomDragState();
+          return;
         }
+
+        const range = actualNode.type.name === 'listItem'
+          ? resolveListItemAt(actualPos, view.state.doc)
+          : getBlockRange(view.state.doc, actualPos, actualNode.type.name);
+        const finalRange = range;
         
         if (!finalRange || finalRange.node.type.name !== actualNode.type.name) {
-          console.log('[DragStart] ABORT: Invalid range or node mismatch');
-          isDragging = true;
+          clearCustomDragState();
           return;
         }
 
@@ -978,8 +1086,7 @@ function createDragHandlePlugin() {
           finalRange.node.type.name === 'paragraph' &&
           isEmptyTrailingParagraph(finalRange.node)
         ) {
-          console.log('[DragStart] ABORT: Cannot drag trailing empty paragraph');
-          isDragging = true;
+          clearCustomDragState();
           return;
         }
 
@@ -1011,12 +1118,7 @@ function createDragHandlePlugin() {
         
         // Verify slice includes full node (especially important for listItems with nested children)
         if (actualNode.type.name === 'listItem') {
-          const expectedSize = finalRange.node.nodeSize; // nodeSize already accounts for content
-          console.log('[DragStart] Slice validation:', {
-            sliceSize: slice.content.size,
-            expectedSize,
-            matches: slice.content.size === expectedSize
-          });
+          const expectedSize = finalRange.node.nodeSize;
           if (slice.content.size < expectedSize - 2) {
             console.warn('[DragStart] WARNING: Slice may be truncated, expected size:', expectedSize, 'got:', slice.content.size);
           }
@@ -1032,29 +1134,20 @@ function createDragHandlePlugin() {
         event.dataTransfer.setData('text/plain', div.textContent || '');
 
         const dom = view.nodeDOM(finalRange.start) as HTMLElement | null;
-        console.log('[DragStart] finalRange.start:', finalRange.start, 'dom:', dom?.tagName, 'dom element:', dom);
         
         if (actualNode.type.name === 'listItem' && dom?.tagName === 'LI') {
-          console.log('[DragStart] Creating list item drag image');
           dragImageEl = createListItemDragImage(dom);
           event.dataTransfer.setDragImage(dragImageEl, 0, 0);
         } else if (dom) {
-          console.log('[DragStart] Using default drag image');
           event.dataTransfer.setDragImage(dom, 0, 0);
-        } else {
-          console.log('[DragStart] WARNING: No DOM element found for range.start');
         }
 
         event.stopPropagation();
-        isDragging = true;
+        isLocalDragging = true;
       };
 
       const onDragEnd = () => {
-        isDragging = false;
-        dragSourcePos = null;
-        dragSourceNode = null;
-        isHandleFocused = false; // Unlock position after drag completes
-        console.log('[DragHandle] Drag ended - position unlocked');
+        clearCustomDragState();
         if (dragImageEl) {
           dragImageEl.remove();
           dragImageEl = null;
@@ -1062,147 +1155,133 @@ function createDragHandlePlugin() {
         hideHandle();
       };
 
+      const onDragOverCapture = (event: DragEvent) => {
+        if (!isDraggingGlobal) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        if (event.dataTransfer) {
+          event.dataTransfer.dropEffect = 'move';
+        }
+        updateDropIndicator(event);
+      };
+
       const onDrop = (event: DragEvent) => {
-        console.log('[Drop] Handler called');
-        
+        if (handledDropEvents.has(event)) {
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          return;
+        }
+
+        if (!isDraggingGlobal) {
+          return;
+        }
+
+        handledDropEvents.add(event);
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+
         if (
           dragSourcePos === null ||
           dragSourcePos === undefined ||
           !dragSourceNode
         ) {
-          console.log('[Drop] ABORT: No drag source');
+          clearCustomDragState();
           return;
         }
 
-        console.log('[Drop] dragSourcePos:', dragSourcePos, 'dragSourceNode:', dragSourceNode.type.name);
-
-        const sourceRange = getBlockRange(
-          view.state.doc,
-          dragSourcePos,
-          dragSourceNode.type.name,
-        );
-        
-        console.log('[Drop] sourceRange:', sourceRange ? { start: sourceRange.start, end: sourceRange.end } : null);
-        
-        // Fix 1: Handle listItem separately if getBlockRange returned null
-        let finalRange = sourceRange;
-        if (!finalRange && dragSourceNode.type.name === 'listItem') {
-          // Build range manually for listItem using ancestor chain
-          const $pos = view.state.doc.resolve(Math.min(dragSourcePos + 1, view.state.doc.content.size));
-          for (let depth = $pos.depth; depth >= 1; depth--) {
-            if ($pos.node(depth).type.name === 'listItem') {
-              const node = $pos.node(depth);
-              const start = $pos.before(depth);
-              const end = $pos.after(depth);
-              finalRange = { start, end, node };
-              console.log('[Drop] Manual listItem range:', { start, end });
-              break;
-            }
-          }
-        }
+        const sourceRange = dragSourceNode.type.name === 'listItem'
+          ? resolveListItemAt(dragSourcePos, view.state.doc)
+          : getBlockRange(view.state.doc, dragSourcePos, dragSourceNode.type.name);
+        const finalRange = sourceRange;
         
         if (!finalRange) {
-          console.log('[Drop] ABORT: No valid range');
+          clearCustomDragState();
           return;
         }
 
         let insertPos: number;
 
         if (dragSourceNode.type.name === 'listItem') {
-          const listInsertPos = resolveListItemInsertPosFromCoords(
+          let listInsertPos = resolveListItemInsertPosFromCoords(
             view,
             event.clientX,
             event.clientY,
           );
+
+          // Fallback: cursor is over non-list content — use block resolver
+          if (
+            listInsertPos === null ||
+            (listInsertPos >= finalRange.start && listInsertPos < finalRange.end)
+          ) {
+            listInsertPos = resolveBlockInsertPosFromCoords(view, event.clientY);
+          }
+
           if (listInsertPos === null) {
-            console.log('[Drop] ABORT: resolveListItemInsertPosFromCoords returned null');
-            event.preventDefault();
-            event.stopPropagation();
+            clearCustomDragState();
             return;
           }
 
           // If the resolved position falls inside the source listItem itself,
-          // the list resolver found the SOURCE as the target (its padded row
-          // covers the actual cursor location).  Instead of falling back to
-          // the top‑level block resolver (which places the item at the wrong
-          // nesting level), find the nearest OTHER listItem to the cursor.
+          // the cursor is on the source item (or its child). This is a self‑drop.
+          // First, check if it's a true no-op (same position).
+          if (
+            listInsertPos === finalRange.start ||
+            (listInsertPos === finalRange.end && isLastSiblingInList(view.state.doc, finalRange.start))
+          ) {
+            clearCustomDragState();
+            return;
+          }
+          // Not a no-op — try to find the nearest same-depth sibling instead.
           if (listInsertPos >= finalRange.start && listInsertPos < finalRange.end) {
-            const editorRect = getEditorContentRect(view);
+            // Get the nesting depth of the source item
+            const sourceDepth = getListItemNestingDepth(view.state.doc, finalRange.start);
+
             let best: { pos: number; score: number } | null = null;
+            const pointerY = event.clientY;
+
             for (const item of getAllListItems(view.state.doc)) {
-              // Skip the source itself (and any node inside its range)
-              if (item.pos >= finalRange.start && item.end <= finalRange.end) continue;
-              const dom = view.nodeDOM(item.pos);
+              // Skip source and its descendants
+              if (item.start >= finalRange.start && item.end <= finalRange.end) continue;
+
+              // Only consider items at the same nesting depth
+              const itemDepth = getListItemNestingDepth(view.state.doc, item.start);
+              if (itemDepth !== sourceDepth) continue;
+
+              // Only consider items in the same parent list
+              const sameParent = shareParentList(view.state.doc, finalRange.start, item.start);
+              if (!sameParent) continue;
+
+              // Score: distance from pointer
+              const dom = view.nodeDOM(item.start);
               if (!(dom instanceof HTMLElement)) continue;
-              const rowRect = getListItemRowRect(
-                view,
-                { pos: item.pos, end: item.end, node: item.node },
-                editorRect,
-              );
-              const mid = rowRect.top + rowRect.height / 2;
-              const inside = event.clientY >= rowRect.top && event.clientY <= rowRect.bottom;
-              const score = inside
-                ? Math.abs(event.clientY - mid)
-                : Math.abs(event.clientY - mid) + 1e6;
+              const rect = dom.getBoundingClientRect();
+              const itemMid = rect.top + rect.height / 2;
+              const score = Math.abs(pointerY - itemMid);
+
               if (!best || score < best.score) {
-                best = { pos: item.pos, score };
+                best = { pos: item.start, score };
               }
             }
-            if (best) {
-              const item = getAllListItems(view.state.doc).find((i) => i.pos === best!.pos)!;
-              const rowRect = getListItemRowRect(
-                view,
-                { pos: item.pos, end: item.end, node: item.node },
-                editorRect,
-              );
-              insertPos =
-                event.clientY < rowRect.top + rowRect.height / 2
-                  ? item.pos
-                  : item.end;
-              console.log('[Drop] listItem self‑target fallback — found target at', best.pos, 'insertPos:', insertPos);
-            } else {
-              // No other listItem found — use parent list boundaries
-              const $source = view.state.doc.resolve(
-                Math.min(finalRange.start + 1, view.state.doc.content.size),
-              );
-              let listStart = -1;
-              let listEnd = -1;
-              for (let d = $source.depth; d >= 1; d--) {
-                if (isListNode($source.node(d))) {
-                  listStart = $source.before(d);
-                  listEnd = $source.after(d);
-                  break;
-                }
-              }
-              if (listStart >= 0) {
-                const sourceRow = getListItemRowRect(
-                  view,
-                  { pos: finalRange.start, end: finalRange.end, node: finalRange.node },
-                  editorRect,
-                );
-                insertPos =
-                  event.clientY < sourceRow.top + sourceRow.height / 2
-                    ? listStart
-                    : listEnd;
-                console.log('[Drop] listItem self‑target fallback — using parent list, insertPos:', insertPos);
-              } else {
-                // Last resort
-                insertPos = resolveBlockInsertPosFromCoords(view, event.clientY);
-                console.log('[Drop] listItem self‑target fallback — no parent list, using block pos:', insertPos);
-              }
+
+            if (!best) {
+              clearCustomDragState();
+              return;
             }
-          } else {
-            insertPos = listInsertPos;
+
+            // Use the nearest sibling's position as the insert position
+            listInsertPos = best.pos;
           }
 
-          // Also nudge when listInsertPos lands exactly on the source's own
-          // start (inner drop cursor at the listItem's own top boundary).
+          insertPos = listInsertPos;
+
+          // Nudge when insertPos lands exactly on source's own start (drop
+          // cursor at the listItem's own top boundary → insert just before).
           if (insertPos === finalRange.start) {
             insertPos = Math.max(0, insertPos - 1);
-          }
-
-          if (insertPos >= finalRange.start && insertPos < finalRange.end) {
-            console.log('[Drop] listItem insertPos inside source range — letting moveBlockRange handle no-op');
           }
         } else {
           insertPos = resolveBlockInsertPosFromCoords(view, event.clientY);
@@ -1229,21 +1308,14 @@ function createDragHandlePlugin() {
           }
         }
 
-        console.log('[Drop] finalRange:', { start: finalRange.start, end: finalRange.end });
-        console.log('[Drop] insertPos:', insertPos);
-        console.log('[Drop] Is insertPos inside source?', insertPos >= finalRange.start && insertPos <= finalRange.end);
-
         let slice = view.state.doc.slice(finalRange.start, finalRange.end);
         if (slice.openStart > 0 || slice.openEnd > 0) {
           slice = new Slice(slice.content, 0, 0);
         }
-        if (slice.content.childCount === 0) return;
-
-        console.log('[Drop] Slice content:', slice.content.childCount, 'children');
-        console.log('[Drop] Slice content type:', Array.from({length: slice.content.childCount}, (_, i) => slice.content.child(i).type.name).join(', '));
-        
-        // Use the insertPos as-is - resolveListItemInsertPosFromCoords already handles list context
-        console.log('[Drop] Using insertPos:', insertPos);
+        if (slice.content.childCount === 0) {
+          clearCustomDragState();
+          return;
+        }
 
         const lastChild = view.state.doc.lastChild;
         const hasTrailingParagraph =
@@ -1256,8 +1328,24 @@ function createDragHandlePlugin() {
           hasTrailingParagraph &&
           insertPos > lastRealContentEnd
         ) {
-          event.preventDefault();
-          event.stopPropagation();
+          clearCustomDragState();
+          return;
+        }
+
+        // No-op detection: dropping exactly where it already is
+        const wouldBeNoOp = (
+          insertPos === finalRange.start ||
+          (insertPos === finalRange.end && isLastSiblingInList(view.state.doc, finalRange.start))
+        );
+
+        if (wouldBeNoOp) {
+          clearCustomDragState();
+          return;
+        }
+
+        // Guard: insertPos strictly inside source range — abort before moveBlockRange
+        if (insertPos > finalRange.start && insertPos < finalRange.end) {
+          clearCustomDragState();
           return;
         }
 
@@ -1269,38 +1357,21 @@ function createDragHandlePlugin() {
           slice,
         );
 
-        console.log('[Drop] moveBlockRange result:', tr ? 'Transaction created' : 'null');
-
         if (!tr) {
-          console.log('[Drop] ABORT: moveBlockRange returned null');
-          event.preventDefault();
-          event.stopPropagation();
+          clearCustomDragState();
           return;
         }
 
-        console.log('[Drop] Dispatching transaction, insertPos:', insertPos);
-        console.log('[Drop] Transaction steps:', tr.steps.length);
-        console.log('[Drop] Transaction doc size before:', view.state.doc.content.size);
-        console.log('[Drop] Transaction steps detail:', tr.steps.map((s, i) => `${i}: ${s.constructor.name}`).join(', '));
-        console.log('[Drop] Transaction is valid:', tr.doc.content.size > 0);
-        
-        // Check if transaction is being rejected
-        const oldDoc = view.state.doc;
         view.dispatch(tr);
-        const newDoc = view.state.doc;
-        
-        console.log('[Drop] Transaction dispatched, new doc size:', newDoc.content.size);
-        console.log('[Drop] Document changed:', oldDoc !== newDoc);
-        console.log('[Drop] Same transaction doc?', newDoc === tr.doc);
-        
-        event.preventDefault();
-        event.stopPropagation();
+        clearCustomDragState();
       };
 
       view.dom.addEventListener('mousemove', onMouseMove);
       view.dom.addEventListener('mouseleave', onMouseLeave);
       view.dom.addEventListener('mouseenter', onMouseEnter);
-      view.dom.addEventListener('drop', onDrop);
+      view.dom.addEventListener('dragover', onDragOverCapture, true);
+      view.dom.addEventListener('dragenter', onDragOverCapture, true);
+      view.dom.addEventListener('drop', onDrop, true);
       handle.addEventListener('dragstart', onDragStart);
       handle.addEventListener('dragend', onDragEnd);
       handle.addEventListener('mouseenter', onHandleMouseEnter);
@@ -1318,12 +1389,15 @@ function createDragHandlePlugin() {
           view.dom.removeEventListener('mousemove', onMouseMove);
           view.dom.removeEventListener('mouseleave', onMouseLeave);
           view.dom.removeEventListener('mouseenter', onMouseEnter);
-          view.dom.removeEventListener('drop', onDrop);
+          view.dom.removeEventListener('dragover', onDragOverCapture, true);
+          view.dom.removeEventListener('dragenter', onDragOverCapture, true);
+          view.dom.removeEventListener('drop', onDrop, true);
           handle.removeEventListener('dragstart', onDragStart);
           handle.removeEventListener('dragend', onDragEnd);
           handle.removeEventListener('mouseenter', onHandleMouseEnter);
           handle.removeEventListener('mouseleave', onHandleMouseLeave);
           cancelHide();
+          dropIndicator.remove();
           if (handle.parentNode) {
             handle.parentNode.removeChild(handle);
           }
