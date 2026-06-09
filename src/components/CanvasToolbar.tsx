@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { 
   MousePointer2, Hand, HandIcon, PenTool, Square, Type, 
-  Eraser, Circle,
+  Eraser, Circle, Spline,
   Undo, Redo, Trash2, Layers,
   Pencil, Highlighter, Plus,
   Bold, Italic, AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  GripVertical
+  GripVertical, ArrowRight, ArrowRightLeft, Minus
 } from 'lucide-react';
 
 import { ShapePropertiesPanel } from './ShapePropertiesPanel';
@@ -25,15 +25,16 @@ const TEXT_SIZES = [
 ];
 
 
-const LayersPanel = ({ nodes, strokes, selectedNodeId, selectedStrokeId, onSelectNode, onSelectStroke, onReorderLayers }: any) => {
+const LayersPanel = ({ nodes, strokes, edges, selectedNodeId, selectedStrokeId, selectedEdgeId, onSelectNode, onSelectStroke, onSelectEdge, onReorderLayers }: any) => {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dragPosition, setDragPosition] = useState<'before' | 'after' | null>(null);
 
   const allLayers = [
     ...nodes.map((n: any) => ({ ...n, layerType: 'node' })),
+    ...edges.map((e: any) => ({ ...e, layerType: 'edge' })),
     ...strokes.map((s: any) => ({ ...s, layerType: 'stroke' }))
-  ].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
+  ];
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     setDraggedId(id);
@@ -87,7 +88,9 @@ const LayersPanel = ({ nodes, strokes, selectedNodeId, selectedStrokeId, onSelec
           allLayers.map((layer: any) => {
             const isSelected = layer.layerType === 'node' 
               ? selectedNodeId === layer.id 
-              : selectedStrokeId === layer.id;
+              : layer.layerType === 'edge'
+                ? selectedEdgeId === layer.id
+                : selectedStrokeId === layer.id;
             
             let icon = <PenTool size={12} />;
             let label = `Stroke #${layer.id.substring(0, 4)}`;
@@ -100,12 +103,15 @@ const LayersPanel = ({ nodes, strokes, selectedNodeId, selectedStrokeId, onSelec
                 icon = layer.shapeType === 'circle' ? <Circle size={12} /> : <Square size={12} />;
                 label = `${layer.shapeType.charAt(0).toUpperCase() + layer.shapeType.slice(1)}`;
               }
+            } else if (layer.layerType === 'edge') {
+              icon = <Spline size={12} />;
+              label = layer.label?.trim() || `Arrow #${layer.id.substring(0, 4)}`;
             }
 
             return (
               <div
                 key={layer.id}
-                draggable
+                draggable={layer.layerType !== 'edge'}
                 onDragStart={(e) => handleDragStart(e, layer.id)}
                 onDragOver={(e) => handleDragOver(e, layer.id)}
                 onDragLeave={handleDragLeave}
@@ -126,9 +132,15 @@ const LayersPanel = ({ nodes, strokes, selectedNodeId, selectedStrokeId, onSelec
                     if (layer.layerType === 'node') {
                       onSelectNode(layer.id);
                       onSelectStroke(null);
+                      onSelectEdge?.(null);
+                    } else if (layer.layerType === 'edge') {
+                      onSelectEdge?.(layer.id);
+                      onSelectNode(null);
+                      onSelectStroke(null);
                     } else {
                       onSelectStroke(layer.id);
                       onSelectNode(null);
+                      onSelectEdge?.(null);
                     }
                   }}
                 >
@@ -397,15 +409,131 @@ const TextPropertiesPanel = ({ settings, onChange }: any) => {
   );
 };
 
+const ArrowPropertiesPanel = ({ edge, onEdgeUpdate, onDelete }: any) => {
+  if (!edge) return null;
+  return (
+    <div className="properties-panel-content">
+      <div className="properties-header">Arrow Settings</div>
+
+      {/* Style */}
+      <div className="properties-group">
+        <label className="properties-label">Style</label>
+        <div className="button-group">
+          {[
+            { id: 'arrow', icon: <ArrowRight size={14} />, label: 'Arrow' },
+            { id: 'double-arrow', icon: <ArrowRightLeft size={14} />, label: 'Double' },
+            { id: 'line', icon: <Minus size={14} />, label: 'Line' },
+          ].map(item => (
+            <button
+              key={item.id}
+              className={`button-group-item ${edge.style === item.id ? 'active' : ''}`}
+              onClick={() => onEdgeUpdate(edge.id, { style: item.id })}
+              title={item.label}
+            >
+              {item.icon}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Shaft */}
+      <div className="properties-group">
+        <label className="properties-label">Shaft</label>
+        <div className="button-group">
+          {[
+            { id: 'solid', icon: <Minus size={14} />, label: 'Solid' },
+            { id: 'dashed', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="12" x2="20" y2="12" strokeDasharray="4 4" /></svg>, label: 'Dashed' },
+          ].map(item => (
+            <button
+              key={item.id}
+              className={`button-group-item ${(edge.shaft || 'solid') === item.id ? 'active' : ''}`}
+              onClick={() => onEdgeUpdate(edge.id, { shaft: item.id })}
+              title={item.label}
+            >
+              {item.icon}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Color */}
+      <div className="properties-group">
+        <label className="properties-label">Color</label>
+        <div className="color-picker">
+          <button
+            className={`color-swatch flex items-center justify-center border border-dashed border-[var(--color-border)] ${!edge.color ? 'active' : ''}`}
+            style={{ backgroundColor: 'transparent' }}
+            onClick={() => onEdgeUpdate(edge.id, { color: null })}
+            title="Default"
+          >
+            <div className="w-full h-full rounded-full" style={{ background: 'linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc), linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc)', backgroundSize: '8px 8px', backgroundPosition: '0 0, 4px 4px' }} />
+          </button>
+          {IMPORTANT_COLORS.map(color => (
+            <button
+              key={color}
+              className={`color-swatch ${edge.color === color ? 'active' : ''}`}
+              style={{ backgroundColor: color }}
+              onClick={() => onEdgeUpdate(edge.id, { color })}
+            />
+          ))}
+          <div className="relative">
+            <button
+              className={`color-swatch flex items-center justify-center border border-dashed border-[var(--color-border)] ${edge.color && !IMPORTANT_COLORS.includes(edge.color) ? 'active' : ''}`}
+              style={{ backgroundColor: edge.color && !IMPORTANT_COLORS.includes(edge.color) ? edge.color : 'transparent' }}
+              onClick={() => document.getElementById('arrow-color-custom')?.click()}
+            >
+              <Plus size={14} className={edge.color && !IMPORTANT_COLORS.includes(edge.color) ? 'text-white mix-blend-difference' : 'text-[var(--color-text-muted)]'} />
+            </button>
+            <input
+              id="arrow-color-custom"
+              type="color"
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              value={edge.color || '#000000'}
+              onChange={(e) => onEdgeUpdate(edge.id, { color: e.target.value })}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Label */}
+      <div className="properties-group">
+        <label className="properties-label">Label</label>
+        <input
+          className="text-input"
+          type="text"
+          value={edge.label || ''}
+          onChange={(e) => onEdgeUpdate(edge.id, { label: e.target.value })}
+          placeholder="Add a label..."
+        />
+      </div>
+
+      {/* Delete */}
+      <div className="properties-group !mb-0">
+        <button
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-red-500/30 text-red-500 text-xs font-mono hover:bg-red-500/10 transition-colors"
+          onClick={onDelete}
+        >
+          <Trash2 size={14} />
+          Delete Arrow
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export const CanvasToolbar = ({
   activeTool,
   onToolChange,
   nodes,
   strokes,
+  edges,
   selectedNodeId,
   selectedStrokeId,
+  selectedEdgeId,
   onSelectNode,
   onSelectStroke,
+  onSelectEdge,
+  onEdgeUpdate,
   onPanTo,
   penSettings,
   onPenSettingsChange,
@@ -458,6 +586,7 @@ export const CanvasToolbar = ({
     activeTool === 'pen' ? 'pen' :
     activeTool === 'shape' ? 'shape' :
     activeTool === 'text' ? 'text' :
+    selectedEdgeId ? 'arrow' :
     selectedStroke ? 'pen' :
     (selectedNode && selectedNode.type === 'shape') ? 'shape' :
     (selectedNode && selectedNode.type === 'text') ? 'text' : null;
@@ -472,10 +601,13 @@ export const CanvasToolbar = ({
           <LayersPanel 
             nodes={nodes}
             strokes={strokes}
+            edges={edges}
             selectedNodeId={selectedNodeId}
             selectedStrokeId={selectedStrokeId}
+            selectedEdgeId={selectedEdgeId}
             onSelectNode={onSelectNode}
             onSelectStroke={onSelectStroke}
+            onSelectEdge={onSelectEdge}
             onReorderLayers={onReorderLayers}
           />
         </div>
@@ -498,6 +630,12 @@ export const CanvasToolbar = ({
             <TextPropertiesPanel
               settings={effectiveTextSettings}
               onChange={onTextSettingsChange}
+            />
+          ) : activePanel === 'arrow' ? (
+            <ArrowPropertiesPanel
+              edge={edges?.find((e: any) => e.id === selectedEdgeId)}
+              onEdgeUpdate={onEdgeUpdate}
+              onDelete={onDelete}
             />
           ) : null}
         </div>
@@ -554,6 +692,13 @@ export const CanvasToolbar = ({
           title="Erase (E)"
         >
           <Eraser size={20} />
+        </button>
+        <button
+          className={`toolbar-btn toolbar-btn-primary ${activeTool === 'arrow' ? 'active' : ''}`}
+          onClick={() => handleToolSelect('arrow')}
+          title="Arrow (A)"
+        >
+          <Spline size={20} />
         </button>
         
         <div className="toolbar-divider" />

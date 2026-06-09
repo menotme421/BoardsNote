@@ -62,7 +62,7 @@ import {
   Sun, Moon, Settings, Cloud, Star,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Undo, Redo, Tag, Trash2, Edit2, X, CheckSquare,
-  Check, CheckCircle2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Columns, Rows, Zap, Navigation, Clipboard, Lock, PanelLeft, PanelTop, Info, Baseline, Highlighter, ZoomIn, ZoomOut, Maximize
+  Check, CheckCircle2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Columns, Rows, Zap, Navigation, Clipboard, Lock, PanelLeft, PanelTop, Info, Baseline, Highlighter, ZoomIn, ZoomOut, Maximize, Spline
 } from 'lucide-react';
 
 type FileType = 'note' | 'canvas' | 'folder';
@@ -760,6 +760,35 @@ export function getSvgPathFromStroke(stroke: { x: number, y: number, p: number }
   return d.join(' ');
 }
 
+function getAnchorPoint(node: { x: number, y: number, width: number, height: number }, anchor: string) {
+  switch (anchor) {
+    case 'top': return { x: node.x + node.width / 2, y: node.y };
+    case 'bottom': return { x: node.x + node.width / 2, y: node.y + node.height };
+    case 'left': return { x: node.x, y: node.y + node.height / 2 };
+    case 'right': return { x: node.x + node.width, y: node.y + node.height / 2 };
+    default: return { x: node.x + node.width / 2, y: node.y + node.height / 2 };
+  }
+}
+
+function getBestAnchors(source: { x: number, y: number, width: number, height: number }, target: { x: number, y: number, width: number, height: number }) {
+  const scx = source.x + source.width / 2;
+  const scy = source.y + source.height / 2;
+  const tcx = target.x + target.width / 2;
+  const tcy = target.y + target.height / 2;
+  const dx = tcx - scx;
+  const dy = tcy - scy;
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
+  if (absDx >= absDy) {
+    return dx >= 0
+      ? { sourceAnchor: 'right', targetAnchor: 'left' }
+      : { sourceAnchor: 'left', targetAnchor: 'right' };
+  }
+  return dy >= 0
+    ? { sourceAnchor: 'bottom', targetAnchor: 'top' }
+    : { sourceAnchor: 'top', targetAnchor: 'bottom' };
+}
+
 const ToolButton = ({ icon, onClick }: { icon: any, onClick: any }) => (
   <button
     className="p-1.5 rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
@@ -779,7 +808,9 @@ const CanvasNode = React.memo(({
   isEditing,
   onEditChange,
   onToggleCollapse,
-  onUpdateNode
+  onUpdateNode,
+  onPointerEnter,
+  onPointerLeave
 }: {
   node: any,
   isSelected: boolean,
@@ -790,7 +821,9 @@ const CanvasNode = React.memo(({
   isEditing?: boolean,
   onEditChange?: (id: string, editing: boolean) => void,
   onToggleCollapse?: (id: string) => void,
-  onUpdateNode?: (id: string, updates: any) => void
+  onUpdateNode?: (id: string, updates: any) => void,
+  onPointerEnter?: (id: string) => void,
+  onPointerLeave?: (id: string) => void
 }) => {
   const nodeRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -798,6 +831,8 @@ const CanvasNode = React.memo(({
   sizeRef.current = { width: node.width, height: node.height };
   const onResizeRef = useRef(onResize);
   onResizeRef.current = onResize;
+  const onUpdateNodeRef = useRef(onUpdateNode);
+  onUpdateNodeRef.current = onUpdateNode;
 
   const isTextLike = ['text', 'rich-text-card'].includes(node.type);
   const isResizable = ['shape', 'image-block'].includes(node.type);
@@ -846,12 +881,13 @@ const CanvasNode = React.memo(({
         y: startRect.y + (moveEvent.clientY - startY) / scale
       };
       applyShapeRectToDom(nextRect);
+      onUpdateNodeRef.current?.(node.id, { x: nextRect.x, y: nextRect.y });
     };
 
     const onPointerUp = () => {
       document.removeEventListener('pointermove', onPointerMove);
       document.removeEventListener('pointerup', onPointerUp);
-      onUpdateNode(node.id, { x: nextRect.x, y: nextRect.y });
+      onUpdateNodeRef.current?.(node.id, { x: nextRect.x, y: nextRect.y });
     };
 
     document.addEventListener('pointermove', onPointerMove);
@@ -957,6 +993,8 @@ const CanvasNode = React.memo(({
   return (
     <div
       ref={nodeRef}
+      onPointerEnter={() => onPointerEnter?.(node.id)}
+      onPointerLeave={() => onPointerLeave?.(null)}
       onPointerDown={(e) => {
         if (tool === 'select' && !node.isLocked && !isEditing) {
           handleShapeMovePointerDown(e);
@@ -1123,11 +1161,26 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [tool, setTool] = useState('select');
   const [nodes, setNodes] = useState<any[]>(file.elements?.nodes || []);
-  const [edges, setEdges] = useState<any[]>(file.elements?.edges || []);
+  const [edges, setEdges] = useState<any[]>(() => {
+    const raw = file.elements?.edges || [];
+    return raw.map((e: any) => ({
+      ...e,
+      sourceAnchor: e.sourceAnchor || 'right',
+      targetAnchor: e.targetAnchor || 'left',
+      style: e.style || 'arrow',
+      color: e.color || null,
+      label: e.label || '',
+      labelEditing: false,
+      route: e.route || 'direct',
+      waypoints: e.waypoints || [],
+    }));
+  });
   const [strokes, setStrokes] = useState<any[]>(file.elements?.strokes || []);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
@@ -1174,10 +1227,38 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
   const activePointerIdRef = useRef<number | null>(null);
   const currentStrokeRef = useRef<{ x: number, y: number, p: number }[] | null>(null);
 
+  // Connection drag state
+  const isConnectingRef = useRef(false);
+  const connectionStartRef = useRef<{ nodeId: string, anchor: string, x: number, y: number } | null>(null);
+
+  // Selection refs for keyboard handler (avoids stale closures without re-registering listeners)
+  const selectedNodeIdRef = useRef(selectedNodeId);
+  const selectedStrokeIdRef = useRef(selectedStrokeId);
+  const selectedEdgeIdRef = useRef(selectedEdgeId);
+
+  // Edge label editing state
+  const [editingEdgeLabelId, setEditingEdgeLabelId] = useState<string | null>(null);
+  const editingEdgeLabelIdRef = useRef<string | null>(null);
+
+  // Waypoint drag state
+  const draggingWaypointRef = useRef<{ edgeId: string; index: number } | null>(null);
+
+  // Endpoint reassignment state
+  const reassigningEndpointRef = useRef<{ edgeId: string; role: 'source' | 'target' } | null>(null);
+
+  // Sync selection refs to stay current (used by keyboard handler)
+  useEffect(() => {
+    selectedNodeIdRef.current = selectedNodeId;
+    selectedStrokeIdRef.current = selectedStrokeId;
+    selectedEdgeIdRef.current = selectedEdgeId;
+    editingEdgeLabelIdRef.current = editingEdgeLabelId;
+  }, [selectedNodeId, selectedStrokeId, selectedEdgeId, editingEdgeLabelId]);
+
   // High-performance ink and SVG drawing refs
   const livePathRef = useRef<SVGPathElement>(null);
   const liveCanvasRef = useRef<HTMLCanvasElement>(null);
   const inkPresenterRef = useRef<any>(null);
+  const dragPreviewRef = useRef<SVGLineElement>(null);
 
   useEffect(() => {
     // Feature Request: check if Delegated Ink Trail is supported
@@ -1280,6 +1361,9 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
       setNodes(nodes.filter(n => n.id !== selectedNodeId));
       setEdges(edges.filter(e => e.source !== selectedNodeId && e.target !== selectedNodeId));
       setSelectedNodeId(null);
+    } else if (selectedEdgeId) {
+      setEdges(edges.filter(e => e.id !== selectedEdgeId));
+      setSelectedEdgeId(null);
     } else if (selectedStrokeId) {
       setStrokes(strokes.filter(s => s.id !== selectedStrokeId));
       setSelectedStrokeId(null);
@@ -1456,18 +1540,25 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
     for (const node of sortedNodes) {
       const cx = node.x + node.width / 2;
       const cy = node.y + node.height / 2;
-      if (Math.hypot(x - cx, y - cy) <= tolerance) {
-        return { ...node, x: cx, y: cy }; // return center point as x,y
-      }
-      // Also check if point is inside the node bounds
-      if (x >= node.x && x <= node.x + node.width && y >= node.y && y <= node.y + node.height) {
-        return { ...node, x: cx, y: cy }; // return center point as x,y
+      const inBounds = x >= node.x && x <= node.x + node.width && y >= node.y && y <= node.y + node.height;
+      const nearCenter = Math.hypot(x - cx, y - cy) <= tolerance;
+      if (inBounds || nearCenter) {
+        return { ...node, x: cx, y: cy };
       }
     }
     return null;
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    // Clear stale connection state if it somehow exists
+    if (isConnectingRef.current) {
+      isConnectingRef.current = false;
+      connectionStartRef.current = null;
+      if (dragPreviewRef.current) {
+        dragPreviewRef.current.style.display = 'none';
+      }
+    }
+
     // Prevent default to stop compatibility mouse events from firing after touch/pen
     // But don't prevent default if the target is an input or textarea
     const target = e.target as HTMLElement;
@@ -1594,6 +1685,7 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
 
     if (tool === 'select') {
       setSelectedNodeId(null);
+      setSelectedEdgeId(null);
 
       // Check for stroke selection (top-down by zIndex)
       let foundStrokeId = null;
@@ -1617,11 +1709,53 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
 
     setSelectedNodeId(null);
     setSelectedStrokeId(null);
+    setSelectedEdgeId(null);
   };
 
   const [currentPressure, setCurrentPressure] = useState(0);
 
   const handlePointerMove = (e: React.PointerEvent) => {
+    // Connection drag - update preview line via DOM ref
+    if (isConnectingRef.current && connectionStartRef.current && dragPreviewRef.current) {
+      const coords = getCanvasCoords(e);
+      dragPreviewRef.current.setAttribute('x2', String(coords.x));
+      dragPreviewRef.current.setAttribute('y2', String(coords.y));
+      return;
+    }
+
+    // Waypoint drag - update waypoint with 8px snap
+    if (draggingWaypointRef.current) {
+      const coords = getCanvasCoords(e);
+      const sx = Math.round(coords.x / 8) * 8;
+      const sy = Math.round(coords.y / 8) * 8;
+      setEdges(prev => prev.map(ed => {
+        if (ed.id !== draggingWaypointRef.current?.edgeId) return ed;
+        const wp = [...(ed.waypoints || [])];
+        wp[draggingWaypointRef.current!.index] = { x: sx, y: sy };
+        return { ...ed, waypoints: wp, route: 'elbow' };
+      }));
+      return;
+    }
+
+    // Endpoint reassignment drag
+    if (reassigningEndpointRef.current && dragPreviewRef.current) {
+      const coords = getCanvasCoords(e);
+      const { edgeId, role } = reassigningEndpointRef.current;
+      const edge = edges.find(ed => ed.id === edgeId);
+      if (edge) {
+        const fixedNode = nodes.find(n => n.id === (role === 'source' ? edge.target : edge.source));
+        const fixedAnchor = role === 'source' ? edge.targetAnchor : edge.sourceAnchor;
+        if (fixedNode) {
+          const fp = getAnchorPoint(fixedNode, fixedAnchor);
+          dragPreviewRef.current.setAttribute('x1', String(fp.x));
+          dragPreviewRef.current.setAttribute('y1', String(fp.y));
+          dragPreviewRef.current.setAttribute('x2', String(coords.x));
+          dragPreviewRef.current.setAttribute('y2', String(coords.y));
+        }
+      }
+      return;
+    }
+
     // Only process events for the active pointer (if one is active)
     if (activePointerIdRef.current !== null && activePointerIdRef.current !== e.pointerId) {
       return;
@@ -1734,6 +1868,107 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
+    // Connection drag finish
+    if (isConnectingRef.current && connectionStartRef.current) {
+      isConnectingRef.current = false;
+      if (dragPreviewRef.current) {
+        dragPreviewRef.current.style.display = 'none';
+      }
+      const coords = getCanvasCoords(e);
+      // Find target node at drop point
+      const hit = findNodeAtPoint(coords.x, coords.y);
+      if (hit && hit.id !== connectionStartRef.current.nodeId) {
+        const sourceNode = nodes.find(n => n.id === connectionStartRef.current.nodeId);
+        const targetNode = nodes.find(n => n.id === hit.id);
+        if (sourceNode && targetNode) {
+          const sourceAnchor = connectionStartRef.current.anchor;
+          const SNAP_THRESHOLD = 12;
+          const anchors = ['top', 'right', 'bottom', 'left'];
+          let targetAnchor: string | null = null;
+          for (const a of anchors) {
+            const ap = getAnchorPoint(targetNode, a);
+            if (Math.hypot(coords.x - ap.x, coords.y - ap.y) < SNAP_THRESHOLD) {
+              targetAnchor = a;
+              break;
+            }
+          }
+          if (!targetAnchor) {
+            const tc = { x: targetNode.x + targetNode.width / 2, y: targetNode.y + targetNode.height / 2 };
+            const ddx = coords.x - tc.x;
+            const ddy = coords.y - tc.y;
+            targetAnchor = Math.abs(ddx) >= Math.abs(ddy)
+              ? (ddx >= 0 ? 'right' : 'left')
+              : (ddy >= 0 ? 'bottom' : 'top');
+          }
+          const newEdge = {
+            id: Math.random().toString(36).substr(2, 9),
+            source: connectionStartRef.current.nodeId,
+            target: targetNode.id,
+            sourceAnchor,
+            targetAnchor,
+            style: 'arrow',
+            color: null,
+            label: '',
+            labelEditing: false,
+            route: 'direct',
+            waypoints: [],
+          };
+          setEdges(prev => [...prev, newEdge]);
+          setSelectedEdgeId(newEdge.id);
+          setSelectedNodeId(null);
+          setSelectedStrokeId(null);
+        }
+      }
+      connectionStartRef.current = null;
+      return;
+    }
+
+    // Waypoint drag finish
+    if (draggingWaypointRef.current) {
+      draggingWaypointRef.current = null;
+      return;
+    }
+
+    // Endpoint reassignment finish
+    if (reassigningEndpointRef.current) {
+      const { edgeId, role } = reassigningEndpointRef.current;
+      reassigningEndpointRef.current = null;
+      if (dragPreviewRef.current) {
+        dragPreviewRef.current.style.display = 'none';
+      }
+      const coords = getCanvasCoords(e);
+      const hit = findNodeAtPoint(coords.x, coords.y);
+      const edge = edges.find(ed => ed.id === edgeId);
+      if (hit && edge) {
+        const realNode = nodes.find(n => n.id === hit.id);
+        if (realNode) {
+          const SNAP_THRESHOLD = 12;
+          let newAnchor: string | null = null;
+          for (const a of ['top', 'right', 'bottom', 'left']) {
+            const ap = getAnchorPoint(realNode, a);
+            if (Math.hypot(coords.x - ap.x, coords.y - ap.y) < SNAP_THRESHOLD) {
+              newAnchor = a;
+              break;
+            }
+          }
+          if (!newAnchor) {
+            const tc = { x: realNode.x + realNode.width / 2, y: realNode.y + realNode.height / 2 };
+            const ddx = coords.x - tc.x;
+            const ddy = coords.y - tc.y;
+            newAnchor = Math.abs(ddx) >= Math.abs(ddy)
+              ? (ddx >= 0 ? 'right' : 'left')
+              : (ddy >= 0 ? 'bottom' : 'top');
+          }
+          setEdges(prev => prev.map(ed => {
+            if (ed.id !== edgeId) return ed;
+            if (role === 'source') return { ...ed, source: realNode.id, sourceAnchor: newAnchor };
+            return { ...ed, target: realNode.id, targetAnchor: newAnchor };
+          }));
+        }
+      }
+      return;
+    }
+
     // Only process events for the active pointer
     if (activePointerIdRef.current !== null && activePointerIdRef.current !== e.pointerId) {
       return;
@@ -1874,7 +2109,37 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
 
     if (activePointerIdRef.current !== null) return;
 
-    if (tool === 'select') {
+    if (tool === 'arrow') {
+      // Start connection from nearest anchor point
+      const node = nodes.find(n => n.id === id);
+      if (!node || isLocked) return;
+      const coords = getCanvasCoords(e);
+      const cx = node.x + node.width / 2;
+      const cy = node.y + node.height / 2;
+      const dx = coords.x - cx;
+      const dy = coords.y - cy;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+      let anchor: string;
+      if (absDx >= absDy) {
+        anchor = dx >= 0 ? 'right' : 'left';
+      } else {
+        anchor = dy >= 0 ? 'bottom' : 'top';
+      }
+      const ap = getAnchorPoint(node, anchor);
+      isConnectingRef.current = true;
+      connectionStartRef.current = { nodeId: id, anchor, x: ap.x, y: ap.y };
+      if (dragPreviewRef.current) {
+        dragPreviewRef.current.setAttribute('x1', String(ap.x));
+        dragPreviewRef.current.setAttribute('y1', String(ap.y));
+        dragPreviewRef.current.setAttribute('x2', String(ap.x));
+        dragPreviewRef.current.setAttribute('y2', String(ap.y));
+        dragPreviewRef.current.style.display = 'block';
+      }
+      setSelectedEdgeId(null);
+      setSelectedNodeId(null);
+      setSelectedStrokeId(null);
+    } else if (tool === 'select') {
       setSelectedNodeId(id);
       setSelectedStrokeId(null);
       if (!isLocked) {
@@ -1916,14 +2181,22 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (selectedNodeId && tool === 'select') {
+        const nid = selectedNodeIdRef.current;
+        const eid = selectedEdgeIdRef.current;
+        const sid = selectedStrokeIdRef.current;
+        if (nid && tool === 'select') {
           // Don't delete if editing text
           if (document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'INPUT') return;
-          setNodes(nodes.filter(n => n.id !== selectedNodeId));
-          setEdges(edges.filter(e => e.source !== selectedNodeId && e.target !== selectedNodeId));
+          setNodes(nodes.filter(n => n.id !== nid));
+          setEdges(edges.filter(e => e.source !== nid && e.target !== nid));
           setSelectedNodeId(null);
-        } else if (selectedStrokeId && tool === 'select') {
-          setStrokes(strokes.filter(s => s.id !== selectedStrokeId));
+          setEditingEdgeLabelId(null);
+        } else if ((tool === 'select' || tool === 'arrow') && eid) {
+          setEdges(edges.filter(e => e.id !== eid));
+          setSelectedEdgeId(null);
+          setEditingEdgeLabelId(null);
+        } else if (sid && tool === 'select') {
+          setStrokes(strokes.filter(s => s.id !== sid));
           setSelectedStrokeId(null);
         }
       } else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
@@ -1961,6 +2234,8 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
           setEdges(nextState.edges);
           setStrokes(nextState.strokes);
         }
+      } else if (e.key === 'Escape' && editingEdgeLabelIdRef.current) {
+        setEditingEdgeLabelId(null);
       }
     };
 
@@ -2081,7 +2356,7 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('paste', handlePaste);
     };
-  }, [selectedNodeId, selectedStrokeId, tool, nodes, edges, strokes, transform]);
+  }, [tool, nodes, edges, strokes, transform]);
 
   const performPasteFromClipboard = useCallback(async (x: number, y: number) => {
     try {
@@ -2358,10 +2633,16 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
           onToolChange={setTool}
           nodes={nodes}
           strokes={strokes}
+          edges={edges}
           selectedNodeId={selectedNodeId}
           selectedStrokeId={selectedStrokeId}
+          selectedEdgeId={selectedEdgeId}
           onSelectNode={setSelectedNodeId}
           onSelectStroke={setSelectedStrokeId}
+          onSelectEdge={setSelectedEdgeId}
+          onEdgeUpdate={(id: string, updates: any) => {
+            setEdges(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+          }}
           onPanTo={(x: number, y: number) => {
             if (containerRef.current) {
               setTransform({
@@ -2520,22 +2801,111 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
             className="absolute inset-0 origin-top-left"
             style={{ transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})` }}
           >
-            <svg className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+            <svg className="absolute inset-0" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
               <defs>
-                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                  <polygon points="0 0, 10 3.5, 0 7" fill="var(--text-secondary)" />
+                <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+                  <path d="M0,0 L0,6 L8,3 z" fill="currentColor" />
+                </marker>
+                <marker id="arrowhead-start" markerWidth="8" markerHeight="6" refX="1" refY="3" orient="auto">
+                  <path d="M8,0 L8,6 L0,3 z" fill="currentColor" />
                 </marker>
               </defs>
               {edges.map(edge => {
                 const source = nodes.find(n => n.id === edge.source);
                 const target = nodes.find(n => n.id === edge.target);
                 if (!source || !target) return null;
-                const sx = source.x + source.width / 2;
-                const sy = source.y + source.height / 2;
-                const tx = target.x + target.width / 2;
-                const ty = target.y + target.height / 2;
-                return <line key={edge.id} x1={sx} y1={sy} x2={tx} y2={ty} stroke="var(--text-secondary)" strokeWidth="2" markerEnd="url(#arrowhead)" />;
+                const sp = getAnchorPoint(source, edge.sourceAnchor);
+                const tp = getAnchorPoint(target, edge.targetAnchor);
+                const isSelected = selectedEdgeId === edge.id;
+                const edgeColor = edge.color || 'var(--color-text-muted)';
+                const markerEnd = edge.style === 'line' ? undefined : `url(#arrowhead)`;
+                const markerStart = edge.style === 'double-arrow' ? `url(#arrowhead-start)` : undefined;
+                const selectedColor = 'var(--color-accent)';
+                const isElbow = edge.route === 'elbow' && edge.waypoints?.length >= 2;
+                const points = isElbow ? `${sp.x},${sp.y} ${edge.waypoints.map((w: any) => `${w.x},${w.y}`).join(' ')} ${tp.x},${tp.y}` : undefined;
+                return (
+                  <g key={edge.id}>
+                    {isElbow ? (
+                      <polyline
+                        points={points}
+                        stroke="transparent"
+                        strokeWidth={12}
+                        fill="none"
+                        style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+                        onPointerDown={(e) => {
+                          if (tool !== 'select' && tool !== 'arrow') return;
+                          e.stopPropagation();
+                          setSelectedEdgeId(edge.id);
+                          setSelectedNodeId(null);
+                          setSelectedStrokeId(null);
+                        }}
+                        onDoubleClick={(e) => {
+                          if (tool !== 'select' && tool !== 'arrow') return;
+                          e.stopPropagation();
+                          setSelectedEdgeId(edge.id);
+                          setEditingEdgeLabelId(edge.id);
+                        }}
+                      />
+                    ) : (
+                      <line
+                        x1={sp.x} y1={sp.y} x2={tp.x} y2={tp.y}
+                        stroke="transparent"
+                        strokeWidth={12}
+                        style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+                        onPointerDown={(e) => {
+                          if (tool !== 'select' && tool !== 'arrow') return;
+                          e.stopPropagation();
+                          setSelectedEdgeId(edge.id);
+                          setSelectedNodeId(null);
+                          setSelectedStrokeId(null);
+                        }}
+                        onDoubleClick={(e) => {
+                          if (tool !== 'select' && tool !== 'arrow') return;
+                          e.stopPropagation();
+                          setSelectedEdgeId(edge.id);
+                          setEditingEdgeLabelId(edge.id);
+                        }}
+                      />
+                    )}
+                    {isElbow ? (
+                      <polyline
+                        points={points}
+                        stroke={isSelected ? selectedColor : edgeColor}
+                        strokeWidth={1.5}
+                        fill="none"
+                        strokeDasharray={edge.shaft === 'dashed' ? '5 4' : undefined}
+                        markerEnd={markerEnd}
+                        markerStart={markerStart}
+                        style={{ pointerEvents: 'none', color: edgeColor }}
+                      />
+                    ) : (
+                      <line
+                        x1={sp.x} y1={sp.y} x2={tp.x} y2={tp.y}
+                        stroke={isSelected ? selectedColor : edgeColor}
+                        strokeWidth={1.5}
+                        strokeDasharray={edge.shaft === 'dashed' ? '5 4' : undefined}
+                        markerEnd={markerEnd}
+                        markerStart={markerStart}
+                        style={{ pointerEvents: 'none', color: edgeColor }}
+                        onDoubleClick={(e) => {
+                          if (tool !== 'select' && tool !== 'arrow') return;
+                          e.stopPropagation();
+                          setSelectedEdgeId(edge.id);
+                          setEditingEdgeLabelId(edge.id);
+                        }}
+                      />
+                    )}
+                  </g>
+                );
               })}
+              {/* Drag preview line - hidden by default */}
+              <line
+                ref={dragPreviewRef}
+                stroke="var(--color-text-muted)"
+                strokeWidth={1.5}
+                strokeDasharray="4 3"
+                style={{ display: 'none', pointerEvents: 'none' }}
+              />
               {sortedStrokes.map(stroke => {
                 const isSelected = selectedStrokeId === stroke.id;
                 const bounds = isSelected ? getStrokeBounds(stroke) : null;
@@ -2543,7 +2913,7 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
                 const opacity = stroke.opacity ?? (stroke.type === 'pencil' ? 0.3 : stroke.type === 'marker' ? 0.6 : 1);
 
                 return (
-                  <g key={stroke.id}>
+                  <g key={stroke.id} style={{ pointerEvents: 'none' }}>
                     <path
                       d={d}
                       fill={stroke.color || 'var(--text-primary)'}
@@ -2574,6 +2944,122 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
               />
             </svg>
 
+            {/* Edge labels: pill display or inline editor */}
+            {edges.map(edge => {
+              const source = nodes.find(n => n.id === edge.source);
+              const target = nodes.find(n => n.id === edge.target);
+              if (!source || !target) return null;
+              const sp = getAnchorPoint(source, edge.sourceAnchor);
+              const tp = getAnchorPoint(target, edge.targetAnchor);
+              const isElbowForLabel = edge.route === 'elbow' && edge.waypoints?.length >= 2;
+              const mx = isElbowForLabel ? edge.waypoints[Math.floor(edge.waypoints.length / 2)].x : (sp.x + tp.x) / 2;
+              const my = isElbowForLabel ? edge.waypoints[Math.floor(edge.waypoints.length / 2)].y : (sp.y + tp.y) / 2;
+              const isEditing = editingEdgeLabelId === edge.id;
+              const hasLabel = !!edge.label;
+              if (!isEditing && !hasLabel) return null;
+              return isEditing ? (
+                <input
+                  key={edge.id + '-label-input'}
+                  defaultValue={edge.label || ''}
+                  ref={(el) => { if (el) { el.focus(); el.select(); } }}
+                  className="absolute z-50 px-2 py-0.5 text-xs font-mono rounded-full border border-[var(--color-accent)] bg-[var(--bg-secondary)] text-[var(--text-primary)] outline-none"
+                  style={{ left: mx, top: my, transform: 'translate(-50%, -50%)', minWidth: 40 }}
+                  onPointerDown={e => e.stopPropagation()}
+                  onBlur={e => {
+                    setEdges(prev => prev.map(ed => ed.id === edge.id ? { ...ed, label: e.target.value, labelEditing: false } : ed));
+                    setEditingEdgeLabelId(null);
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') e.currentTarget.blur();
+                    if (e.key === 'Escape') setEditingEdgeLabelId(null);
+                  }}
+                />
+              ) : (
+                <div
+                  key={edge.id + '-label'}
+                  className="absolute z-40 px-2 py-0.5 text-xs font-mono rounded-full border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-primary)] cursor-default select-none whitespace-nowrap"
+                  style={{ left: mx, top: my, transform: 'translate(-50%, -50%)', pointerEvents: 'none' }}
+                >
+                  {edge.label}
+                </div>
+              );
+            })}
+
+            {/* Edge handles: midpoint/waypoint + endpoint drag handles for selected edges */}
+            {edges.map(edge => {
+              const source = nodes.find(n => n.id === edge.source);
+              const target = nodes.find(n => n.id === edge.target);
+              if (!source || !target) return null;
+              const isSelected = selectedEdgeId === edge.id;
+              if (!isSelected) return null;
+              const sp = getAnchorPoint(source, edge.sourceAnchor);
+              const tp = getAnchorPoint(target, edge.targetAnchor);
+              const isElbow = edge.route === 'elbow' && edge.waypoints?.length >= 2;
+
+              return (
+                <div key={edge.id + '-handles'}>
+                  {/* Midpoint/waypoint handles */}
+                  {isElbow ? edge.waypoints.map((wp: any, i: number) => (
+                    <div
+                      key={i}
+                      className="absolute w-2.5 h-2.5 rounded-full border border-[var(--color-accent)] bg-[var(--bg-secondary)] cursor-grab z-40"
+                      style={{ left: wp.x, top: wp.y, transform: 'translate(-50%, -50%)' }}
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        draggingWaypointRef.current = { edgeId: edge.id, index: i };
+                      }}
+                    />
+                  )) : (
+                    <div
+                      className="absolute w-2.5 h-2.5 rounded-full border border-[var(--color-accent)] bg-[var(--bg-secondary)] cursor-grab z-40"
+                      style={{ left: (sp.x + tp.x) / 2, top: (sp.y + tp.y) / 2, transform: 'translate(-50%, -50%)' }}
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        const mx = (sp.x + tp.x) / 2;
+                        const my = (sp.y + tp.y) / 2;
+                        setEdges(prev => prev.map(ed => ed.id === edge.id ? { ...ed, route: 'elbow', waypoints: [{ x: mx, y: my }, { x: mx, y: my }] } : ed));
+                        draggingWaypointRef.current = { edgeId: edge.id, index: 1 };
+                      }}
+                    />
+                  )}
+
+                  {/* Source endpoint handle */}
+                  <div
+                    className="absolute w-2.5 h-2.5 rounded-full border border-[var(--color-accent)] bg-[var(--color-accent)] cursor-grab z-40"
+                    style={{ left: sp.x, top: sp.y, transform: 'translate(-50%, -50%)' }}
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      reassigningEndpointRef.current = { edgeId: edge.id, role: 'source' };
+                      if (dragPreviewRef.current) {
+                        dragPreviewRef.current.setAttribute('x1', String(sp.x));
+                        dragPreviewRef.current.setAttribute('y1', String(sp.y));
+                        dragPreviewRef.current.setAttribute('x2', String(tp.x));
+                        dragPreviewRef.current.setAttribute('y2', String(tp.y));
+                        dragPreviewRef.current.style.display = 'block';
+                      }
+                    }}
+                  />
+
+                  {/* Target endpoint handle */}
+                  <div
+                    className="absolute w-2.5 h-2.5 rounded-full border border-[var(--color-accent)] bg-[var(--color-accent)] cursor-grab z-40"
+                    style={{ left: tp.x, top: tp.y, transform: 'translate(-50%, -50%)' }}
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      reassigningEndpointRef.current = { edgeId: edge.id, role: 'target' };
+                      if (dragPreviewRef.current) {
+                        dragPreviewRef.current.setAttribute('x1', String(sp.x));
+                        dragPreviewRef.current.setAttribute('y1', String(sp.y));
+                        dragPreviewRef.current.setAttribute('x2', String(tp.x));
+                        dragPreviewRef.current.setAttribute('y2', String(tp.y));
+                        dragPreviewRef.current.style.display = 'block';
+                      }
+                    }}
+                  />
+                </div>
+              );
+            })}
+
             {nodes.map(node => (
               <CanvasNode
                 key={node.id}
@@ -2581,6 +3067,8 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
                 isSelected={selectedNodeId === node.id}
                 tool={tool}
                 onPointerDown={handleNodePointerDown}
+                onPointerEnter={setHoveredNodeId}
+                onPointerLeave={setHoveredNodeId}
                 onContentChange={(id: string, content: string) => {
                   isTyping.current = true;
                   clearTimeout(typingTimeout.current);
@@ -2609,6 +3097,53 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
                 }}
               />
             ))}
+            {/* Port connection dots for hovered node */}
+            {hoveredNodeId && (tool === 'select' || tool === 'arrow') && (() => {
+              const node = nodes.find(n => n.id === hoveredNodeId);
+              if (!node) return null;
+              const anchors = [
+                { key: 'top', ...getAnchorPoint(node, 'top') },
+                { key: 'right', ...getAnchorPoint(node, 'right') },
+                { key: 'bottom', ...getAnchorPoint(node, 'bottom') },
+                { key: 'left', ...getAnchorPoint(node, 'left') },
+              ];
+              return anchors.map((a) => (
+                <div
+                  key={a.key}
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    if (!isConnectingRef.current) {
+                      isConnectingRef.current = true;
+                      connectionStartRef.current = { nodeId: hoveredNodeId, anchor: a.key, x: a.x, y: a.y };
+                      if (dragPreviewRef.current) {
+                        dragPreviewRef.current.setAttribute('x1', String(a.x));
+                        dragPreviewRef.current.setAttribute('y1', String(a.y));
+                        dragPreviewRef.current.setAttribute('x2', String(a.x));
+                        dragPreviewRef.current.setAttribute('y2', String(a.y));
+                        dragPreviewRef.current.style.display = 'block';
+                      }
+                      setSelectedEdgeId(null);
+                      setSelectedNodeId(null);
+                      setSelectedStrokeId(null);
+                    }
+                  }}
+                  className="absolute w-2 h-2 rounded-full border border-white cursor-pointer z-50"
+                  style={{
+                    left: a.x - 4,
+                    top: a.y - 4,
+                    backgroundColor: 'var(--color-border)',
+                  }}
+                  onPointerEnter={() => setHoveredNodeId(hoveredNodeId)}
+                  onPointerLeave={() => setHoveredNodeId(null)}
+                  onMouseEnter={(e) => {
+                    (e.target as HTMLElement).style.backgroundColor = 'var(--color-accent)';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.target as HTMLElement).style.backgroundColor = 'var(--color-border)';
+                  }}
+                />
+              ));
+            })()}
           </div>
         </div>
 
