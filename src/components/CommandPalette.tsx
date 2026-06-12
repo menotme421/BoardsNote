@@ -64,26 +64,26 @@ export const CommandPalette = ({
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center pt-[15vh] z-50" onClick={onClose}>
       <div
-        className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[70vh]"
+        className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[70vh]"
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-4 border-b border-[var(--border-primary)] flex items-center gap-3">
-          <Search size={20} className="text-[var(--text-secondary)]" />
+        <div className="p-4 border-b border-[var(--color-border)] flex items-center gap-3">
+          <Search size={20} className="text-[var(--color-text-secondary)]" />
           <input
             ref={inputRef}
-            className="flex-1 bg-transparent outline-none text-lg text-[var(--text-primary)] placeholder-[var(--text-secondary)]"
+            className="flex-1 bg-transparent outline-none text-lg text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)]"
             placeholder={placeholder}
             value={query}
             onChange={e => setQuery(e.target.value)}
           />
-          <button onClick={onClose} className="p-1 hover:bg-[var(--bg-tertiary)] rounded text-[var(--text-secondary)]">
+          <button onClick={onClose} className="p-1 hover:bg-[var(--color-bg-tertiary)] rounded text-[var(--color-text-secondary)]">
             <X size={20} />
           </button>
         </div>
 
         <div className="overflow-y-auto p-2 flex-1">
           {filteredItems.length === 0 ? (
-            <div className="p-8 text-center text-[var(--text-secondary)]">
+            <div className="p-8 text-center text-[var(--color-text-secondary)]">
               {query ? `No results found for "${query}"` : 'Start typing to search...'}
             </div>
           ) : (
@@ -94,7 +94,7 @@ export const CommandPalette = ({
                 ) : (
                   <div
                     key={item.id}
-                    className="p-3 rounded-lg hover:bg-[var(--bg-tertiary)] cursor-pointer flex flex-col gap-1 border border-transparent hover:border-[var(--border-primary)] transition-colors"
+                    className="p-3 rounded-lg hover:bg-[var(--color-bg-tertiary)] cursor-pointer flex flex-col gap-1 border border-transparent hover:border-[var(--color-border)] transition-colors"
                     onClick={() => {
                       onSelect(item);
                       onClose();
@@ -102,13 +102,13 @@ export const CommandPalette = ({
                   >
                     <div className="flex items-center gap-2">
                       {item.icon && <span className="flex items-center justify-center">{item.icon}</span>}
-                      <span className="font-medium text-[var(--text-primary)] text-sm">{item.label}</span>
+                      <span className="font-medium text-[var(--color-text-primary)] text-sm">{item.label}</span>
                       {item.subLabel && (
-                        <span className="text-xs text-[var(--text-secondary)]">{item.subLabel}</span>
+                        <span className="text-xs text-[var(--color-text-secondary)]">{item.subLabel}</span>
                       )}
                     </div>
                     {item.preview && (
-                      <p className="text-xs text-[var(--text-secondary)] line-clamp-2 mt-1 opacity-80">
+                      <p className="text-xs text-[var(--color-text-secondary)] line-clamp-2 mt-1 opacity-80">
                         {item.preview}
                       </p>
                     )}
@@ -119,10 +119,10 @@ export const CommandPalette = ({
           )}
         </div>
 
-        <div className="p-2 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)] text-xs text-[var(--text-secondary)] flex justify-between">
-          <span><kbd className="bg-[var(--bg-primary)] px-1.5 py-0.5 rounded border border-[var(--border-primary)]">↑</kbd> <kbd className="bg-[var(--bg-primary)] px-1.5 py-0.5 rounded border border-[var(--border-primary)]">↓</kbd> to navigate</span>
-          <span><kbd className="bg-[var(--bg-primary)] px-1.5 py-0.5 rounded border border-[var(--border-primary)]">Enter</kbd> to select</span>
-          <span><kbd className="bg-[var(--bg-primary)] px-1.5 py-0.5 rounded border border-[var(--border-primary)]">Esc</kbd> to close</span>
+        <div className="p-2 border-t border-[var(--color-border)] bg-[var(--color-bg-tertiary)] text-xs text-[var(--color-text-secondary)] flex justify-between">
+          <span><kbd className="bg-[var(--color-bg-primary)] px-1.5 py-0.5 rounded border border-[var(--color-border)]">↑</kbd> <kbd className="bg-[var(--color-bg-primary)] px-1.5 py-0.5 rounded border border-[var(--color-border)]">↓</kbd> to navigate</span>
+          <span><kbd className="bg-[var(--color-bg-primary)] px-1.5 py-0.5 rounded border border-[var(--color-border)]">Enter</kbd> to select</span>
+          <span><kbd className="bg-[var(--color-bg-primary)] px-1.5 py-0.5 rounded border border-[var(--color-border)]">Esc</kbd> to close</span>
         </div>
       </div>
     </div>

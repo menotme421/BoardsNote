@@ -112,11 +112,11 @@ export const ShapePropertiesPanel = ({ settings, onChange }: any) => {
             ))}
             <div className="relative">
               <button
-                className={`color-swatch flex items-center justify-center border border-dashed border-[var(--border-primary)] ${!IMPORTANT_COLORS.includes(settings.strokeColor || '#000000') ? 'active' : ''}`}
+                className={`color-swatch flex items-center justify-center border border-dashed border-[var(--color-border)] ${!IMPORTANT_COLORS.includes(settings.strokeColor || '#000000') ? 'active' : ''}`}
                 style={{ backgroundColor: !IMPORTANT_COLORS.includes(settings.strokeColor || '#000000') ? (settings.strokeColor || '#000000') : 'transparent' }}
                 onClick={() => document.getElementById('shape-stroke-custom')?.click()}
               >
-                <Plus size={14} className={!IMPORTANT_COLORS.includes(settings.strokeColor || '#000000') ? 'text-white mix-blend-difference' : 'text-[var(--text-secondary)]'} />
+                <Plus size={14} className={!IMPORTANT_COLORS.includes(settings.strokeColor || '#000000') ? 'text-white mix-blend-difference' : 'text-[var(--color-text-secondary)]'} />
               </button>
               <input
                 id="shape-stroke-custom"
@@ -156,7 +156,7 @@ export const ShapePropertiesPanel = ({ settings, onChange }: any) => {
       <div className="properties-group">
         <div className="flex justify-between items-center mb-2">
           <label className="properties-label !mb-0">opacity</label>
-          <span className="text-[10px] font-mono text-[var(--text-secondary)]">{Math.round((settings.opacity ?? 1) * 100)}%</span>
+          <span className="text-[10px] font-mono text-[var(--color-text-secondary)]">{Math.round((settings.opacity ?? 1) * 100)}%</span>
         </div>
         <input
           type="range"
@@ -165,7 +165,7 @@ export const ShapePropertiesPanel = ({ settings, onChange }: any) => {
           step="0.05"
           value={settings.opacity ?? 1}
           onChange={(e) => onChange({ ...settings, opacity: parseFloat(e.target.value) })}
-          className="w-full accent-[var(--text-primary)]"
+          className="w-full accent-[var(--color-text-primary)]"
         />
       </div>
     </div>

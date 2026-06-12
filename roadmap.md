@@ -1,209 +1,197 @@
-# BoardsNote — Roadmap v2
+# BoardsNote — Roadmap v2.5
 
-> Compiled from user feedback session. Items are ordered by priority within each section.
-> Legend: 🐛 Bug · ✨ UX improvement · 🌱 New feature · ✂️ Cut/cleanup · 🔍 Needs scoping
+> Compiled from interface redesign exploration session.
+> Focus: sidebar simplification, browser/home layer, and first-run personality.
+> Legend: 🌱 New feature · 🎨 Redesign · 🔍 Needs scoping
 
 ---
 
-## Next — Sync
+## Context
 
-### 1. 🌱 Google Drive sync
-**Scope:** Notes + Canvas  
-**Priority:** Ship next, before any other new feature
+This update originated from a single observation: **the sidebar feels packed and complex**, despite BoardsNote already being minimal compared to apps like Notion or Anytype. It also wasn't designed with tablet (landscape) as a second device in mind.
 
-Implement cloud persistence via Google Drive. This promotes the long-deferred "Settings → Sync" tab into an active feature.
+Two questions framed the whole exploration:
+
+- **Returning user:** "Where did I leave off?" / "I want to create something new."
+- **First-time user:** "How do I create a note or canvas?"
+
+The conclusion: the sidebar was trying to do too many jobs (navigation, search, mode switching, settings, *and* first-touch orientation). The fix is architectural — split these responsibilities across two layers.
+
+---
+
+## 1. 🎨 New three-state architecture
+
+### The two layers
+
+| Layer | Job | When it appears |
+|---|---|---|
+| **Browser (home)** | "What do I work on?" — orientation, browsing, creation | On app open, or when navigating back |
+| **Sidebar** | "Jump to another file" — pure navigation | While inside a Note or Canvas |
+
+### The three interface states
+
+1. **Browser** — full-width, no sidebar. Topbar has wordmark + Notes/Canvas mode switcher only.
+2. **Editor/Canvas, sidebar hidden** — content shell takes full width. Sidebar toggle button in topbar.
+3. **Editor/Canvas, sidebar visible** — lean sidebar appears flush to page background (no shell), content shell shrinks.
+
+```
+Browser (full width, no sidebar)
+    │
+    ├── Tap card → Editor / Canvas
+    │       ├── Sidebar hidden (default) → toggle → Sidebar appears
+    │       └── Sidebar visible
+    │               ├── Tap file → switch file, stay in editor
+    │               ├── Tap "Home" row → back to Browser
+    │               └── Tap toggle → sidebar hides
+    │
+    └── Tap "New note/board" → Editor / Canvas (sidebar hidden)
+```
 
 **Acceptance criteria:**
-- OAuth sign-in flow in Settings → Sync
-- Each note and canvas board serialised as an individual file in a dedicated Drive folder
-- Changes sync on save (not real-time)
-- Conflict resolution: last-write-wins for v1
-- Sync status indicator in sidebar footer (idle / syncing / error)
-- Works offline; syncs when connection is restored
+- User can move between all three states without dead ends
+- State transitions are smooth (sidebar width animates, no layout jump)
+- Returning to the app reopens the last-edited file directly (skips browser) — browser is reached via "Home", not the default landing screen for returning users with existing files
+- First-time users with zero files land on the Browser blank state
 
 ---
 
-## Notes — Bugs
+## 2. 🎨 Sidebar redesign (editor/canvas mode)
 
-### 2. 🐛 Drag-and-drop: drop cursor line indicator persists after drop
-**Scope:** Notes  
+The sidebar becomes a **pure navigator** — three elements only, nothing else.
 
-The line indicator showing where a block will land has a long latency to disappear after the block is dropped.
+### Structure (top to bottom)
+1. **Home row** — `← Home`, returns to Browser
+2. **Divider**
+3. **File list** — flat, recency-sorted, active file highlighted with brand-tint background
+4. **New file row** — inline at bottom of list, not a separate button
+5. **Footer** — single row, 2 icons only (Settings, Theme toggle)
 
-**Fix:** Clear drag state (and the drop cursor) immediately on the `drop` event — do not wait for the next repaint or React reconciliation cycle.
+### What's removed from the old sidebar
+| Element | Was | Now |
+|---|---|---|
+| Mode switcher (Notes/Canvas) | Full-width tab strip | Moved to Browser topbar |
+| Search bar | Always-visible inline bar | Removed — `Cmd+K` palette only |
+| Footer | Multiple labeled sections | Single icon row (Settings + Theme) |
 
----
+### Visual treatment — shell change
+**Sidebar no longer has its own shell.** Following the Linear pattern:
+- Sidebar background = `--color-page-bg` (same as page, no border, no radius)
+- Content (editor/canvas) = white/dark shell, 1px border, 4px radius, inset 6px from page edge (existing `design.md` tokens)
+- This removes `--color-sidebar-bg` as a distinct token — it becomes `--color-page-bg`
 
-### 3. 🐛 Drag-and-drop: does not work inside bullet or numbered lists
-**Scope:** Notes  
+### Tablet (landscape) adjustments
+| Token | Desktop | Tablet |
+|---|---|---|
+| Sidebar width | 220px | 240px |
+| File item padding | `px-3 py-2` | `px-3 py-2.5` |
+| Footer icon buttons | 28×28px | 36×36px |
+| Mode/nav icon buttons | 28×28px | 32×32px |
 
-Dragging blocks inside list nodes has no effect.
-
-**Fix:** Add list node types (`bulletList`, `orderedList`, `listItem`) to the TipTap drag-handle extension's allowed-node configuration.
-
----
-
-### 4. 🐛 Code block: Cmd+A / Ctrl+A selects entire note instead of code inside block
-**Scope:** Notes  
-
-When the cursor is inside a code block, select-all escapes the block boundary and selects the whole document.
-
-**Fix:** Intercept the `selectAll` command inside the code block node and scope it to the block's content. Stop event propagation so it does not bubble to the editor root.
-
----
-
-### 5. 🐛 Table block: no way to delete the entire table
-**Scope:** Notes  
-
-Backspace on the table container does not delete it. Users are stuck.
-
-**Fix (two-part):**
-1. Add a "Delete table" action to the existing table context menu.
-2. Handle the case where the cursor is on the table's outer node boundary and `Backspace` or `Delete` is pressed — delete the entire table node.
-
----
-
-## Notes — UX Improvements
-
-### 6. ✨ Nested list indentation style
-**Scope:** Notes  
-
-All list levels currently use the same marker style, making nesting hard to read.
-
-**Expected behaviour:**
-- Ordered list, level 2+: `list-style-type: lower-alpha` (a, b, c…)
-- Unordered list, level 2+: `list-style-type: circle` (hollow bullet)
-- Level 1 remains unchanged (decimal / filled disc)
-
-**Fix:** Add CSS rules targeting `ol > li > ol` and `ul > li > ul` inside the editor content styles.
+**Acceptance criteria:**
+- Sidebar renders with no border/shell, flush to page background in both themes
+- File list is the dominant visual element — no competing sections
+- Home row is always the first item, consistently positioned
+- Tablet touch targets meet the sizes above without layout breaking
 
 ---
 
-### 7. ✨ Redesign note info button as a "Properties" panel
-**Scope:** Notes  
+## 3. 🌱 Browser (home) layer — split mode design
 
-The current info button feels disconnected and underdesigned. Replace it with a proper Properties panel that follows the design system.
+The Browser is a **new top-level surface**, not a sidebar variant. It replaces the old "always-visible file list" with a card-based view, split by mode.
 
-**Position:** Top-right corner of the editor, same location as the current button.
+### Layout
+- **Topbar:** wordmark (also acts as Home button when inside editor), Notes/Canvas mode switcher (pill toggle, center), search + settings + theme icons (right)
+- **Browser header row:** section title ("Notes" / "Canvas"), file count, sort indicator (defaults to "Recent"), "New note"/"New board" button (mode-aware)
+- **Card grid:** 2-column grid (3-column on tablet landscape)
 
-**Panel contents:**
-- Word count and character count
-- Created date / last modified date
-- Tag management (add, remove tags)
-- Note-level settings (e.g. font size override if applicable)
+### Notes mode — card content
+- Card title
+- Text excerpt (2–3 lines, clamped)
+- Footer: type dot, last-edited time, tags (if any)
+- **Pinned file spans full width** (2-column "wide" card) with extra excerpt lines — the only size-variance rule, driven by pin state rather than arbitrary bento sizing
 
-**Design reference:** Use the same panel pattern as the Canvas properties panel. Follow `design.md` tokens — 4px radius, `var(--color-*)`, no heavy shadows, 1px border.
+### Canvas mode — card content
+- Card title
+- **Visual thumbnail** — actual miniature render of canvas content (shapes, stickies, text in real positions, scaled down)
+- Footer: type dot, last-edited time, tags (if any)
+- Pinned board gets the pin label + same card treatment as notes
 
----
-
-## Canvas — Bugs
-
-### 8. 🐛 Text nodes and pasted content follow cursor with large delay
-**Scope:** Canvas  
-
-Moving text nodes or pasted images has a noticeable lag behind the cursor. Shapes previously had the same issue and were fixed by a re-implementation.
-
-**Fix:** Apply the same rendering path used for the fixed shapes to text nodes and pasted image elements. The fix likely involves bypassing React state diffing for position updates and writing directly to the canvas/DOM during `pointermove`.
-
----
-
-### 9. 🐛 Pasted images cannot be resized
-**Scope:** Canvas  
-
-Images pasted onto the canvas have no resize handles.
-
-**Fix:**
-- Show resize handles on all four corners (and optionally edges) when an image node is selected — same component as shape resize handles.
-- Default behaviour: constrain aspect ratio.
-- Hold Shift to free-resize (or invert — pick one and be consistent with shape resize behaviour).
+**Acceptance criteria:**
+- Mode switcher in topbar toggles the entire browser content (not just a filter chip)
+- Notes cards never show canvas-style thumbnails and vice versa
+- Pinned file/board always appears first, with wide/expanded treatment
+- Canvas thumbnails are real scaled renders, not placeholder icons
+- Sort defaults to "Recent" (most recently edited first)
 
 ---
 
-## Canvas — UX Improvements
+## 4. 🌱 First-run / blank state
 
-### 10. ✨ Zoom is too insensitive — too many scroll steps to cover useful range
-**Scope:** Canvas  
+### Tone
+**Quietly poetic, welcoming.** Not jokey, not a tutorial. One small personality moment rather than a feature walkthrough — walkthroughs are deferred to a future "real app" milestone (see Not Now list).
 
-Current zoom increment per scroll tick is too small, requiring excessive scrolling.
+### Copy
+> **Heading (same across both modes):**
+> "Notes and canvas. Nothing more, nothing less."
+>
+> **Subline:**
+> "Write something. Draw something. See what happens."
 
-**Improvements:**
-- Increase zoom step size per scroll tick
-- Support pinch-to-zoom on trackpad and touch screens
-- Add a zoom level indicator to the canvas toolbar (e.g. "75%")
-- Add a zoom reset button (double-click indicator or dedicated button) to snap back to 100%
+### Placement — Option B (chosen)
+The blank message sits **flush below the browser header**, left-aligned, same padding as where the first card will appear. It reads as the body of the header row, not a floating centered object. When the first file is created, the message is replaced by the card grid growing from the same position.
 
----
+### Actions
+- Primary button: mode-appropriate ("Start writing" in Notes, "Start drawing" in Canvas)
+- Secondary button: the other mode's action
+- Keyboard hint line below buttons: `N for a new note · C for a new canvas` (order matches current mode)
 
-### 11. ✨ Redesign search / command interface on canvas
-**Scope:** Canvas  
+### Canvas-mode extra
+A faint (≈18% opacity light / ≈10% dark), sketch-style doodle — simple shapes, a sticky note outline, connecting lines — anchored to the bottom of the content area. Decorative only, doesn't compete with the copy.
 
-The current canvas search feels disconnected from the rest of the app.
+### Lifecycle
+This blank state is shown **once per mode**, only when that mode has zero files. Once the first Note (or first Canvas) is created, this screen never appears again for that mode — it's a one-time welcome, not a persistent empty-state pattern.
 
-**Direction:** Unify with the existing command palette pattern used in Notes — same modal component, same keyboard shortcut (`Cmd+K` / `Ctrl+K`), results scoped to canvas elements (nodes, sticky notes, text blocks).
+### Open question
+- "0 files" in the header count: omit the count entirely when zero (show just "Notes" / "Canvas" + new button), to avoid drawing attention to the emptiness. **Needs decision before implementation.**
 
----
-
-### 12. ✨ Redesign layers panel to match design system
-**Scope:** Canvas  
-
-The layers panel does not follow `design.md` tokens.
-
-**Design spec:**
-- 4px border radius throughout
-- All colours via `var(--color-*)` tokens
-- Lucide icons at 14px, `stroke-width: 1.5px`
-- Row layout: drag handle + icon + label, compact padding (`px-2 py-1.5`)
-- Selected state: brand-tint background (`var(--color-accent-tint)`), brand text (`var(--color-accent)`)
-- Matches the Layers Panel spec in `design.md § Data Display → Layers Panel`
+**Acceptance criteria:**
+- Blank state appears only when a mode has zero files, and only on first visit to that empty mode
+- Heading and subline are identical across Notes/Canvas (single manifesto, not per-screen copy)
+- Canvas mode shows the doodle; Notes mode does not
+- Once any file exists in a mode, the blank state is permanently replaced by the card grid for that mode
 
 ---
 
-### 13. ✨ Improve stylus writing experience
-**Scope:** Canvas  
+## 5. 🔍 Needs scoping
 
-Stylus input is functional but not optimised.
+### 5.1 Open/editor transition animation
+Tapping a card in the Browser needs a defined transition into full-screen editor/canvas. Not yet designed. Should feel native, not jarring — likely a scale/fade combination tied to the card's position.
 
-**Improvements to investigate:**
-- Pressure sensitivity: map `PointerEvent.pressure` to stroke width
-- Palm rejection: check `pointerType === 'pen'` and ignore simultaneous touch input
-- Optional: snap-to-grid for stylus (off by default, toggle in canvas settings)
+### 5.2 Canvas thumbnail generation
+Real-time scaled renders of canvas content for Browser cards. Needs technical scoping — render-to-image on save vs. live canvas snapshot vs. cached thumbnail regenerated periodically.
 
----
-
-## Canvas — Cleanup
-
-### 14. ✂️ Remove duplicate / non-unique font variants from font picker
-**Scope:** Canvas  
-
-The font appearance option includes visually identical variants, making the list noisy and confusing.
-
-**Action:**
-1. Audit the font list — remove any variant that renders identically to another already in the list.
-2. If the remaining unique set is ≤ 3 fonts, remove the font picker entirely and inherit the global font setting from Notes Settings.
+### 5.3 Full onboarding walkthrough
+Deferred. The blank-state personality moment is the interim solution. A full walkthrough is a "real app" milestone, not part of this update.
 
 ---
 
-## Needs Scoping — Revisit After Canvas v1
+## Updated Definition of "Done" for v2.5
 
-### 15. 🔍 Arrows / connectors on canvas
-**Scope:** Canvas  
-**Previously:** Cut as "too complex for v1"
-
-**Re-evaluate now.** A concrete unblocking use case has emerged: migrating graphs from Excalidraw requires arrows — without them, connected diagrams cannot be replicated and users are stuck. This changes the calculus from "nice to have" to "blocks real migration."
-
-**Decision needed:** Yes or no. If yes, promote to the Canvas v1 definition of done before closing that milestone.
+- [ ] Three-state architecture implemented (Browser / Editor-sidebar-hidden / Editor-sidebar-visible)
+- [ ] Sidebar redesigned: home row, file list, minimal footer — no shell, flush to page background
+- [ ] Mode switcher, search bar, and old footer removed from sidebar
+- [ ] Tablet sizing tokens applied (sidebar width, padding, icon sizes)
+- [ ] Browser layer built with Notes/Canvas split card grids
+- [ ] Pinned file/board gets wide-card treatment in both modes
+- [ ] Canvas cards render real thumbnails
+- [ ] Blank state (Option B placement) implemented for both modes, one-time-per-mode
+- [ ] Returning users with files skip Browser and reopen last file directly
+- [ ] `design.md` updated: `--color-sidebar-bg` removed/merged into `--color-page-bg`
 
 ---
 
-## Updated: Canvas v1 Definition of Done
+## The "Not Now" List (additions)
 
-- [ ] Text nodes can be created and edited
-- [ ] Sticky notes work (create, move, delete, edit text)
-- [ ] Basic shapes work (create, move, resize, delete)
-- [ ] Pen and erase work reliably
-- [ ] Move / select works for all element types
-- [ ] Canvas persists between sessions
-- [ ] Text nodes and pasted images move without cursor lag *(was bug #8)*
-- [ ] Pasted images are resizable *(was bug #9)*
-- [ ] Layers panel matches design system *(was UX #12)*
-- [ ] **[Pending decision]** Arrows / connectors *(scoping item #15)*
+- Full onboarding walkthrough (5.3)
+- Open/editor transition animation polish (5.1) — ship with a simple default first, refine later
+- Canvas thumbnail caching strategy (5.2) — ship with on-save render first

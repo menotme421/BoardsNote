@@ -10,22 +10,22 @@
     <style>
       :root {
         --bg-primary: #ffffff;
-        --text-primary: #111111;
-        --text-secondary: #666666;
-        --border-primary: #dddddd;
+        --color-text-primary: #2b2a27;
+        --color-text-secondary: #6b6962;
+        --color-border: #d4d1c9;
         --bg-code: #f5f5f5;
       }
       html.dark {
-        --bg-primary: #0c0c0c;
-        --text-primary: #e8e8e8;
-        --text-secondary: #888884;
-        --border-primary: #2c2c2c;
+        --bg-primary: #0d0d0d;
+        --color-text-primary: #c8c6c0;
+        --color-text-secondary: #888481;
+        --color-border: #2a2927;
         --bg-code: #1a1a1a;
       }
       body {
         font-family: "DM Sans", sans-serif;
         background-color: var(--bg-primary);
-        color: var(--text-primary);
+        color: var(--color-text-primary);
         line-height: 1.6;
         margin: 0;
         padding: 40px 20px;
@@ -39,7 +39,7 @@
       }
       h1 { font-size: 32px; margin-bottom: 24px; font-weight: 700; }
       h2 { font-size: 24px; margin-top: 40px; margin-bottom: 16px; font-weight: 600; }
-      p { margin-bottom: 16px; color: var(--text-secondary); }
+      p { margin-bottom: 16px; color: var(--color-text-secondary); }
       code {
         font-family: "DM Mono", monospace;
         background: var(--bg-code);
@@ -58,7 +58,7 @@
       .back-link {
         display: inline-block;
         margin-bottom: 40px;
-        color: var(--text-primary);
+        color: var(--color-text-primary);
         text-decoration: none;
         font-family: "DM Mono", monospace;
         font-size: 12px;

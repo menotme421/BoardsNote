@@ -1,4 +1,4 @@
-type StorageKey = 'theme' | 'app_font' | 'files';
+type StorageKey = 'theme' | 'app_font' | 'files' | 'activeFileId';
 
 const PREFIX = 'boardsnote:';
 
@@ -11,6 +11,7 @@ function getLegacyKey(key: StorageKey): string {
     theme: 'inkframe_theme',
     app_font: 'inkframe_app_font',
     files: 'inkframe_files',
+    activeFileId: 'boardsnote:activeFileId',
   };
   return legacyMap[key];
 }

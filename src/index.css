@@ -12,13 +12,13 @@
   --font-jetbrains: "JetBrains Mono", monospace;
   --font-atkinson: "Atkinson Hyperlegible", sans-serif;
   --font-kalam: "Kalam", cursive;
-  --color-bg-primary: var(--bg-primary);
-  --color-bg-secondary: var(--bg-secondary);
-  --color-bg-tertiary: var(--bg-tertiary);
-  --color-text-primary: var(--text-primary);
-  --color-text-secondary: var(--text-secondary);
-  --color-border-primary: var(--border-primary);
-  --color-border-secondary: var(--border-secondary);
+  --color-bg-primary: var(--color-bg-primary);
+  --color-bg-secondary: var(--color-bg-secondary);
+  --color-bg-tertiary: var(--color-bg-tertiary);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-border-primary: var(--color-border);
+  --color-border-secondary: var(--color-border-secondary);
   --color-brand: var(--brand);
   /* Design System v2 Tokens */
   --color-page-bg: var(--color-page-bg);
@@ -41,13 +41,6 @@
 }
 
 :root {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f5f5f5;
-  --bg-tertiary: #e8e8e8;
-  --text-primary: #111111;
-  --text-secondary: #666666;
-  --border-primary: #dddddd;
-  --border-secondary: #bbbbbb;
   --brand: #ff6127;
   --brand-subtle: rgba(255, 97, 39, 0.08);
 
@@ -64,14 +57,19 @@
   --scale-canvas: 1.250;
 
   /* Design System v2 Color Tokens */
-  --color-page-bg: #e8e6e0;
-  --color-shell-bg: #e8e6e0;
-  --color-sidebar-bg: #e8e6e0;
-  --color-editor-bg: #ffffff;
-  --color-surface-hover: #dedad2;
-  --color-border: #d4d1c8;
-  --color-text-primary: #2c2b28;
-  --color-text-muted: #aaa8a2;
+  --color-page-bg: hsl(42 15% 89%);
+  --color-shell-bg: hsl(42 15% 89%);
+  --color-sidebar-bg: var(--color-page-bg);
+  --color-editor-bg: hsl(42 0% 100%);
+  --color-bg-primary: hsl(42 0% 100%);
+  --color-bg-secondary: hsl(42 8% 96%);
+  --color-bg-tertiary: hsl(42 8% 91%);
+  --color-surface-hover: hsl(42 15% 85%);
+  --color-text-primary: hsl(42 5% 16%);
+  --color-text-secondary: hsl(42 5% 40%);
+  --color-text-muted: hsl(42 5% 65%);
+  --color-border: hsl(42 12% 81%);
+  --color-border-secondary: hsl(42 6% 73%);
   --color-accent: #ff6127;
   --color-accent-tint: rgba(255, 97, 39, 0.10);
   --color-accent-dark: #cc4d1f;
@@ -108,25 +106,23 @@
 }
 
 .dark {
-  --bg-primary: #0c0c0c;
-  --bg-secondary: #141414;
-  --bg-tertiary: #1c1c1c;
-  --text-primary: #e8e8e8;
-  --text-secondary: #888888;
-  --border-primary: #2a2a2a;
-  --border-secondary: #444444;
   --brand: #ff6127;
   --brand-subtle: rgba(255, 97, 39, 0.12);
 
   /* Design System v2 Color Tokens */
-  --color-page-bg: #0e0d0c;
-  --color-shell-bg: #1c1b19;
-  --color-sidebar-bg: #1c1b19;
-  --color-editor-bg: #141310;
-  --color-surface-hover: #242320;
-  --color-border: #2a2927;
-  --color-text-primary: #c8c6c0;
-  --color-text-muted: #5a5956;
+  --color-page-bg: hsl(42 8% 5%);
+  --color-shell-bg: hsl(42 6% 10%);
+  --color-sidebar-bg: var(--color-page-bg);
+  --color-editor-bg: hsl(42 11% 7%);
+  --color-bg-primary: hsl(42 0% 5%);
+  --color-bg-secondary: hsl(42 0% 8%);
+  --color-bg-tertiary: hsl(42 0% 11%);
+  --color-surface-hover: hsl(42 6% 13%);
+  --color-text-primary: hsl(42 7% 77%);
+  --color-text-secondary: hsl(42 2% 53%);
+  --color-text-muted: hsl(42 2% 35%);
+  --color-border: hsl(42 4% 16%);
+  --color-border-secondary: hsl(42 0% 27%);
   --color-accent: #ff6127;
   --color-accent-tint: rgba(255, 97, 39, 0.12);
   --color-accent-dark: #cc4d1f;
@@ -168,7 +164,7 @@ html, body, #root {
 
 body {
   background-color: var(--color-page-bg);
-  color: var(--text-primary);
+  color: var(--color-text-primary);
   font-family: "Inter", sans-serif;
   overflow: hidden;
   margin: 0;
@@ -209,7 +205,7 @@ body {
 }
 
 .sidebar-resizer:hover {
-  background-color: var(--bg-tertiary);
+  background-color: var(--color-bg-tertiary);
 }
 
 .sidebar-resizer-line {
@@ -333,7 +329,7 @@ svg.lucide {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-secondary);
+  background: var(--color-border-secondary);
   border-radius: var(--radius-tiny);
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -345,7 +341,7 @@ svg.lucide {
   outline: none;
   font-size: var(--font-base);
   font-weight: 400;
-  color: var(--text-primary);
+  color: var(--color-text-primary);
   line-height: 1.8;
   padding-bottom: 0rem;
 }
@@ -356,14 +352,14 @@ svg.lucide {
   height: clamp(5rem, 18vh, 10rem);
   pointer-events: none;
 }
-.prose h1 { font-family: inherit; font-size: calc(var(--font-base) * var(--scale-note) * var(--scale-note) * var(--scale-note)); margin-bottom: 1rem; font-weight: 700; color: var(--text-primary); line-height: 1.8; letter-spacing: normal; }
-.prose h2 { font-family: inherit; font-size: calc(var(--font-base) * var(--scale-note) * var(--scale-note)); margin-bottom: 0.75rem; font-weight: 500; color: var(--text-primary); line-height: 1.8; letter-spacing: normal; }
-.prose h3 { font-family: inherit; font-size: calc(var(--font-base) * var(--scale-note)); margin-bottom: 0.5rem; font-weight: 400; color: var(--text-secondary); line-height: 1.8; }
-.prose p { margin-bottom: 1rem; line-height: 1.8; font-family: inherit; font-size: var(--font-base); font-weight: 400; color: var(--text-primary); }
+.prose h1 { font-family: inherit; font-size: calc(var(--font-base) * var(--scale-note) * var(--scale-note) * var(--scale-note)); margin-bottom: 1rem; font-weight: 700; color: var(--color-text-primary); line-height: 1.8; letter-spacing: normal; }
+.prose h2 { font-family: inherit; font-size: calc(var(--font-base) * var(--scale-note) * var(--scale-note)); margin-bottom: 0.75rem; font-weight: 500; color: var(--color-text-primary); line-height: 1.8; letter-spacing: normal; }
+.prose h3 { font-family: inherit; font-size: calc(var(--font-base) * var(--scale-note)); margin-bottom: 0.5rem; font-weight: 400; color: var(--color-text-secondary); line-height: 1.8; }
+.prose p { margin-bottom: 1rem; line-height: 1.8; font-family: inherit; font-size: var(--font-base); font-weight: 400; color: var(--color-text-primary); }
 .prose p:empty:focus::before,
 .prose p:empty:first-child:last-child::before {
   content: "Type '/' for commands…";
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   opacity: 0.6;
   font-style: italic;
   font-size: var(--font-base);
@@ -372,10 +368,10 @@ svg.lucide {
 .prose ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
 .prose ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1rem; }
 .prose blockquote { 
-  border-left: 3px solid var(--border-secondary); 
+  border-left: 3px solid var(--color-border-secondary); 
   padding-left: 1rem; 
   font-style: italic; 
-  color: var(--text-secondary); 
+  color: var(--color-text-secondary); 
   margin-bottom: 1rem;
 }
 /* Code Block with Language Selector */
@@ -386,8 +382,8 @@ svg.lucide {
 
 .code-block-container {
   position: relative;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 0;
   overflow: hidden;
 }
@@ -414,9 +410,9 @@ svg.lucide {
   font-family: "Inter", sans-serif;
   font-size: 10px;
   font-weight: 500;
-  color: var(--text-secondary);
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-primary);
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
   border-radius: 0;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -425,8 +421,8 @@ svg.lucide {
 }
 
 .code-block-language-label:hover {
-  color: var(--text-primary);
-  border-color: var(--border-secondary);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-secondary);
 }
 
 .code-block-language-label:focus {
@@ -441,8 +437,8 @@ svg.lucide {
   left: 0;
   min-width: 140px;
   width: max-content;
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-primary);
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
   border-radius: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   z-index: 1000;
@@ -453,8 +449,8 @@ svg.lucide {
 /* Ensure code block has proper positioning context */
 .code-block-container {
   position: relative;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 0;
   overflow: visible;
 }
@@ -465,14 +461,14 @@ svg.lucide {
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  border-bottom: 1px solid var(--border-primary);
-  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-bg-secondary);
   box-sizing: border-box;
   min-width: 100%;
 }
 
 .code-block-language-search .search-icon {
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   flex-shrink: 0;
   width: 12px;
   height: 12px;
@@ -486,12 +482,12 @@ svg.lucide {
   outline: none;
   font-family: "Inter", sans-serif;
   font-size: 11px;
-  color: var(--text-primary);
+  color: var(--color-text-primary);
   padding: 2px 0;
 }
 
 .code-block-language-search-input::placeholder {
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 .code-block-language-search-input:focus {
@@ -516,7 +512,7 @@ svg.lucide {
   padding: 4px 8px;
   font-family: "Inter", sans-serif;
   font-size: 11px;
-  color: var(--text-primary);
+  color: var(--color-text-primary);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -527,7 +523,7 @@ svg.lucide {
 }
 
 .code-block-language-item:hover {
-  background-color: var(--bg-secondary);
+  background-color: var(--color-bg-secondary);
 }
 
 .code-block-language-item.active {
@@ -552,7 +548,7 @@ svg.lucide {
   text-align: center;
   font-family: "Inter", sans-serif;
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 .code-block-loading {
@@ -561,12 +557,12 @@ svg.lucide {
   right: 8px;
   font-family: "Inter", sans-serif;
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 /* Pre/Code styling */
 .prose pre {
-  background-color: var(--bg-secondary);
+  background-color: var(--color-bg-secondary);
   padding: 1rem;
   padding-top: 2.5rem; /* Space for language selector */
   font-family: "DM Mono", monospace;
@@ -599,13 +595,13 @@ svg.lucide {
 
 .prose code {
   font-family: "DM Mono", monospace;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-bg-secondary);
   padding: 0.2rem 0.4rem;
   border-radius: 3px;
   font-size: 0.9em;
 }
 .prose hr {
-  border-color: var(--border-primary);
+  border-color: var(--color-border);
   margin: 2rem 0;
 }
 
@@ -615,7 +611,7 @@ svg.lucide {
 .ProseMirror hr {
   position: relative;
   border: none;
-  border-top: 1px solid var(--border-primary, #e0e0e0);
+  border-top: 1px solid var(--color-border, #e0e0e0);
   padding: 12px 0;
   margin: 4px 0;
   cursor: default;
@@ -722,7 +718,7 @@ svg.lucide {
 .prose h1 code,
 .prose h2 code,
 .prose h3 code {
-  color: var(--text-primary);
+  color: var(--color-text-primary);
 }
 
 .prose table {
@@ -772,7 +768,7 @@ svg.lucide {
 }
 
 .prose .selected-cell {
-  background-color: color-mix(in srgb, var(--text-primary) 8%, transparent) !important;
+  background-color: color-mix(in srgb, var(--color-text-primary) 8%, transparent) !important;
 }
 
 @keyframes helpWidgetIn {
@@ -1186,8 +1182,8 @@ svg.lucide {
   right: 24px;
   top: 50%;
   transform: translateY(-50%);
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
   padding: 1.25rem;
   width: 240px;
@@ -1205,8 +1201,8 @@ svg.lucide {
   left: 24px;
   top: 50%;
   transform: translateY(-50%);
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
   padding: 1.25rem;
   width: 240px;
@@ -1248,10 +1244,10 @@ svg.lucide {
   font-weight: 600;
   line-height: 1.4;
   text-transform: none;
-  color: var(--text-primary);
+  color: var(--color-text-primary);
   margin-bottom: 1.25rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-primary);
+  border-bottom: 1px solid var(--color-border);
 }
 
 /* Properties Groups */
@@ -1278,7 +1274,7 @@ svg.lucide {
 .button-group {
   display: flex;
   gap: 4px;
-  background-color: var(--bg-secondary);
+  background-color: var(--color-bg-secondary);
   padding: 3px;
   border-radius: var(--radius-tiny);
 }
@@ -1286,7 +1282,7 @@ svg.lucide {
 .button-group-item {
   flex: 1;
   padding: 6px 4px;
-  border: 1px solid var(--border-primary);
+  border: 1px solid var(--color-border);
   background-color: transparent;
   border-radius: var(--radius-tiny);
   font-size: 10px;
@@ -1308,7 +1304,7 @@ svg.lucide {
 }
 
 .button-group-item:hover:not(.active) {
-  background-color: var(--bg-secondary);
+  background-color: var(--color-bg-secondary);
   color: var(--color-text-primary);
   transform: scale(1.05);
 }
@@ -1446,7 +1442,7 @@ svg.lucide {
   cursor: pointer;
   margin-bottom: 0.5rem;
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   font-family: 'DM Mono', monospace;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1461,18 +1457,18 @@ svg.lucide {
   -webkit-appearance: none;
   width: 28px;
   height: 16px;
-  background-color: var(--bg-tertiary);
+  background-color: var(--color-bg-tertiary);
   border-radius: 100px;
   position: relative;
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid var(--border-primary);
+  border: 1px solid var(--color-border);
   outline: none;
 }
 
 .toggle-item input[type="checkbox"]:checked {
-  background-color: var(--text-primary);
-  border-color: var(--text-primary);
+  background-color: var(--color-text-primary);
+  border-color: var(--color-text-primary);
 }
 
 .toggle-item input[type="checkbox"]::before {
@@ -1482,18 +1478,18 @@ svg.lucide {
   left: 2px;
   width: 10px;
   height: 10px;
-  background-color: var(--bg-primary);
+  background-color: var(--color-bg-primary);
   border-radius: 50%;
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .toggle-item input[type="checkbox"]:checked::before {
   transform: translateX(12px);
-  background-color: var(--bg-primary);
+  background-color: var(--color-bg-primary);
 }
 
 .toggle-item:hover input[type="checkbox"] {
-  border-color: var(--text-secondary);
+  border-color: var(--color-text-secondary);
 }
 
 .toggle-item span {

@@ -23,7 +23,7 @@ export const TextBlock = ({ node, isEditing, onContentChange, onEditChange, onTo
       className="relative w-full h-full group"
       style={{
         backgroundColor: node.backgroundColor || 'transparent',
-        color: node.textColor || 'var(--text-primary)',
+        color: node.textColor || 'var(--color-text-primary)',
         fontFamily: node.fontFamily || 'var(--font-sans)',
         fontSize: node.fontSize ? `${node.fontSize}px` : '14px',
         maxWidth: '480px',
@@ -97,12 +97,12 @@ export const TextBlock = ({ node, isEditing, onContentChange, onEditChange, onTo
       />
 
       {isCollapsed && !isEditing && (
-        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[var(--bg-primary)] to-transparent pointer-events-none rounded-b-8px" />
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[var(--color-bg-primary)] to-transparent pointer-events-none rounded-b-8px" />
       )}
       
       {node.canCollapse && !isEditing && (
         <button
-          className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-full px-3 py-1 text-xs flex items-center gap-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-full px-3 py-1 text-xs flex items-center gap-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity z-10"
           onClick={(e) => {
             e.stopPropagation();
             onToggleCollapse(node.id);

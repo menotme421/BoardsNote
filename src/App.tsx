@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import boardsNoteLogo from './assets/BoardsNote_brand.png';
 import TurndownService from 'turndown';
 // @ts-ignore
 import { gfm } from 'turndown-plugin-gfm';
@@ -49,6 +48,7 @@ import { LinkCard } from './components/nodes/LinkCard';
 import { ImageBlock } from './components/nodes/ImageBlock';
 import { IconRow } from './components/nodes/IconRow';
 import { CommandPalette } from './components/CommandPalette';
+import { Browser } from './components/Browser';
 import { getStroke } from 'perfect-freehand';
 import {
   Menu, Search, Plus, FileText, LayoutGrid,
@@ -67,7 +67,7 @@ import {
 
 type FileType = 'note' | 'canvas' | 'folder';
 
-interface FileItem {
+export interface FileItem {
   id: string;
   type: FileType;
   title: string;
@@ -212,7 +212,7 @@ const NoteEditor = ({ file, updateFile, appFontClass, noteMeta, activeMode }: { 
     content: file.content || '<p></p>',
     editorProps: {
       attributes: {
-        class: `outline-none min-h-[calc(100vh-220px)] prose max-w-none text-[var(--text-primary)] ${appFontClass}`,
+        class: `outline-none min-h-[calc(100vh-220px)] prose max-w-none text-[var(--color-text-primary)] ${appFontClass}`,
       },
       handleDOMEvents: {
         contextmenu: (view, event) => {
@@ -470,12 +470,12 @@ const NoteEditor = ({ file, updateFile, appFontClass, noteMeta, activeMode }: { 
   const slashPosition = calculateSlashPosition();
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-primary)] text-[var(--text-primary)] relative" ref={editorContainerRef}>
+    <div className="flex flex-col h-full bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] relative" ref={editorContainerRef}>
       <div className="flex flex-grow overflow-hidden relative">
-        <div className="flex-grow overflow-y-auto print:p-0 bg-[var(--bg-primary)] px-10 py-8" ref={scrollContainerRef}>
+        <div className="flex-grow overflow-y-auto print:p-0 bg-[var(--color-bg-primary)] px-10 py-8" ref={scrollContainerRef}>
           <div className="w-full max-w-4xl mx-auto pb-24">
             <input
-              className={`w-full bg-transparent border-none outline-none text-3xl font-semibold mb-5 pl-8 placeholder:text-[var(--text-secondary)] ${appFontClass}`}
+              className={`w-full bg-transparent border-none outline-none text-3xl font-semibold mb-5 pl-8 placeholder:text-[var(--color-text-secondary)] ${appFontClass}`}
               placeholder="Untitled"
               value={file.title || ''}
               onChange={(e) => updateFile(file.id, { title: e.target.value })}
@@ -633,9 +633,9 @@ const NoteEditor = ({ file, updateFile, appFontClass, noteMeta, activeMode }: { 
       )}
 
       {linkPromptOpen && (
-        <div className="fixed z-[10000] bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-lg p-2 flex gap-2 shadow-xl" style={{ top: slashPosition.top + 12, left: slashPosition.left + 240 }}>
-          <button className="px-2 py-1 text-xs border border-[var(--border-secondary)] rounded hover:bg-[var(--bg-secondary)] text-[var(--text-primary)]" onClick={() => applyLinkMode('inline')}>Inline link</button>
-          <button className="px-2 py-1 text-xs border border-[var(--border-secondary)] rounded hover:bg-[var(--bg-secondary)] text-[var(--text-primary)]" onClick={() => applyLinkMode('embed')}>Embed</button>
+        <div className="fixed z-[10000] bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg p-2 flex gap-2 shadow-xl" style={{ top: slashPosition.top + 12, left: slashPosition.left + 240 }}>
+          <button className="px-2 py-1 text-xs border border-[var(--color-border-secondary)] rounded hover:bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)]" onClick={() => applyLinkMode('inline')}>Inline link</button>
+          <button className="px-2 py-1 text-xs border border-[var(--color-border-secondary)] rounded hover:bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)]" onClick={() => applyLinkMode('embed')}>Embed</button>
         </div>
       )}
 
@@ -791,7 +791,7 @@ function getBestAnchors(source: { x: number, y: number, width: number, height: n
 
 const ToolButton = ({ icon, onClick }: { icon: any, onClick: any }) => (
   <button
-    className="p-1.5 rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+    className="p-1.5 rounded hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
     onClick={onClick}
   >
     {icon}
@@ -1014,7 +1014,7 @@ const CanvasNode = React.memo(({
         : isTextLike
           ? `border rounded-md ${isSelected
             ? 'border-[var(--color-accent)] z-10'
-            : 'border-transparent hover:border-[var(--border-secondary)]'
+            : 'border-transparent hover:border-[var(--color-border-secondary)]'
           } ${isEditing ? '!border-[var(--color-accent)] !shadow-[inset_0_0_0_1px_var(--color-accent)]' : ''}`
           : `border ${isSelected ? 'ring-2 ring-[var(--color-accent)]/30 z-10' : ''}`
         }`}
@@ -1029,7 +1029,7 @@ const CanvasNode = React.memo(({
         backgroundColor: !isNewComponent ? (node.type === 'shape' ? node.color || 'transparent' : (node.backgroundColor || 'transparent')) : undefined,
         borderRadius: !isNewComponent ? (node.type === 'shape' ? (node.shapeType === 'circle' ? '50%' : `${node.borderRadius ?? 0}px`) : (isTextLike ? '6px' : '0px')) : undefined,
         borderWidth: !isNewComponent ? (node.type === 'shape' ? `${node.strokeWidth ?? 1}px` : '1px') : undefined,
-        borderColor: !isNewComponent ? (node.type === 'shape' ? (node.strokeColor || 'var(--border-primary)') : undefined) : undefined,
+        borderColor: !isNewComponent ? (node.type === 'shape' ? (node.strokeColor || 'var(--color-border)') : undefined) : undefined,
         opacity: node.type === 'shape' ? (node.opacity ?? 1) : 1,
         padding: !isNewComponent ? (node.type === 'shape' ? 0 : '0px') : undefined,
         cursor: node.isLocked ? 'default' : (tool === 'select' ? (isEditing ? 'text' : 'move') : 'pointer'),
@@ -1186,7 +1186,7 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
   const [isPanning, setIsPanning] = useState(false);
   const [currentStroke, setCurrentStroke] = useState<{ x: number, y: number, p: number }[] | null>(null);
   const [penSettings, setPenSettings] = useState({
-    color: 'var(--text-primary)',
+    color: 'var(--color-text-primary)',
     width: 2,
     type: 'pen' as 'pen' | 'pencil' | 'marker'
   });
@@ -2602,14 +2602,14 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
   };
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-hidden">
-      <div className="h-12 border-b border-[var(--border-primary)] flex items-center justify-between px-4 shrink-0 z-10 bg-[var(--bg-primary)]">
+    <div className="flex flex-col h-full bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] overflow-hidden">
+      <div className="h-12 border-b border-[var(--color-border)] flex items-center justify-between px-4 shrink-0 z-10 bg-[var(--color-bg-primary)]">
         <input
           className="bg-transparent text-xl font-semibold outline-none w-1/3"
           value={file.title}
           onChange={(e) => updateFile(file.id, { title: e.target.value })}
         />
-        <div className="flex items-center gap-0.5 text-[13px] text-[var(--text-secondary)]">
+        <div className="flex items-center gap-0.5 text-[13px] text-[var(--color-text-secondary)]">
           <button className="toolbar-btn toolbar-btn-secondary" onClick={() => setTransform(p => ({ ...p, scale: Math.max(p.scale / 1.01, 0.1) }))} title="Zoom Out (Ctrl+-)">
             <ZoomOut size={16} />
           </button>
@@ -2703,12 +2703,12 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
         >
           {contextMenu && (
             <div
-              className="absolute bg-[var(--bg-secondary)] border border-[var(--border-primary)] shadow-xl rounded py-1 z-50 flex flex-col min-w-[120px] animate-in fade-in"
+              className="absolute bg-[var(--color-bg-secondary)] border border-[var(--color-border)] shadow-xl rounded py-1 z-50 flex flex-col min-w-[120px] animate-in fade-in"
               style={{ left: contextMenu.x, top: contextMenu.y }}
               onPointerDown={e => e.stopPropagation()}
             >
               <button
-                className="px-4 py-2 text-sm text-[var(--text-primary)] text-left hover:bg-[var(--bg-tertiary)] flex items-center gap-2"
+                className="px-4 py-2 text-sm text-[var(--color-text-primary)] text-left hover:bg-[var(--color-bg-tertiary)] flex items-center gap-2"
                 onClick={() => {
                   if (containerRef.current) {
                     const rect = containerRef.current.getBoundingClientRect();
@@ -2734,7 +2734,7 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: 'radial-gradient(var(--border-primary) 1px, transparent 1px)',
+              backgroundImage: 'radial-gradient(var(--color-border) 1px, transparent 1px)',
               backgroundSize: `${20 * transform.scale}px ${20 * transform.scale}px`,
               backgroundPosition: `${transform.x}px ${transform.y}px`
             }}
@@ -2747,10 +2747,10 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
             return (
               <>
                 <div
-                  className="absolute bottom-4 left-16 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded p-2 text-xs font-mono text-[var(--text-secondary)] shadow-lg z-20"
+                  className="absolute bottom-4 left-16 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded p-2 text-xs font-mono text-[var(--color-text-secondary)] shadow-lg z-20"
                   onPointerDown={(e) => e.stopPropagation()}
                 >
-                  <div className="font-bold text-[var(--text-primary)] mb-1">Stroke #{stroke.id.substring(0, 4)}</div>
+                  <div className="font-bold text-[var(--color-text-primary)] mb-1">Stroke #{stroke.id.substring(0, 4)}</div>
                   <div>Size: {stroke.width}px</div>
                   <div>Points: {stroke.points.length}</div>
                   <div>Pos: ({Math.round(bounds.x)}, {Math.round(bounds.y)})</div>
@@ -2760,7 +2760,7 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
                   onPointerDown={(e) => e.stopPropagation()}
                 >
                   <button
-                    className="p-1.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-primary)] shadow-lg"
+                    className="p-1.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] shadow-lg"
                     onClick={(e) => {
                       e.stopPropagation();
                       const maxZ = Math.max(...strokes.map(s => s.zIndex || 0), -1);
@@ -2771,7 +2771,7 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
                     <ArrowUp size={14} />
                   </button>
                   <button
-                    className="p-1.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-primary)] shadow-lg"
+                    className="p-1.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] shadow-lg"
                     onClick={(e) => {
                       e.stopPropagation();
                       const minZ = Math.min(...strokes.map(s => s.zIndex || 0), 1);
@@ -2782,7 +2782,7 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
                     <ArrowDown size={14} />
                   </button>
                   <button
-                    className="p-1.5 bg-[var(--bg-secondary)] border border-red-500/30 rounded hover:bg-red-500/20 text-red-500 shadow-lg mt-1"
+                    className="p-1.5 bg-[var(--color-bg-secondary)] border border-red-500/30 rounded hover:bg-red-500/20 text-red-500 shadow-lg mt-1"
                     onClick={(e) => {
                       e.stopPropagation();
                       setStrokes(strokes.filter(s => s.id !== selectedStrokeId));
@@ -2916,7 +2916,7 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
                   <g key={stroke.id} style={{ pointerEvents: 'none' }}>
                     <path
                       d={d}
-                      fill={stroke.color || 'var(--text-primary)'}
+                      fill={stroke.color || 'var(--color-text-primary)'}
                       opacity={opacity}
                       style={{ isolation: 'isolate' }}
                     />
@@ -2962,7 +2962,7 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
                   key={edge.id + '-label-input'}
                   defaultValue={edge.label || ''}
                   ref={(el) => { if (el) { el.focus(); el.select(); } }}
-                  className="absolute z-50 px-2 py-0.5 text-xs font-mono rounded-full border border-[var(--color-accent)] bg-[var(--bg-secondary)] text-[var(--text-primary)] outline-none"
+                  className="absolute z-50 px-2 py-0.5 text-xs font-mono rounded-full border border-[var(--color-accent)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] outline-none"
                   style={{ left: mx, top: my, transform: 'translate(-50%, -50%)', minWidth: 40 }}
                   onPointerDown={e => e.stopPropagation()}
                   onBlur={e => {
@@ -2977,7 +2977,7 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
               ) : (
                 <div
                   key={edge.id + '-label'}
-                  className="absolute z-40 px-2 py-0.5 text-xs font-mono rounded-full border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-primary)] cursor-default select-none whitespace-nowrap"
+                  className="absolute z-40 px-2 py-0.5 text-xs font-mono rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] cursor-default select-none whitespace-nowrap"
                   style={{ left: mx, top: my, transform: 'translate(-50%, -50%)', pointerEvents: 'none' }}
                 >
                   {edge.label}
@@ -3002,7 +3002,7 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
                   {isElbow ? edge.waypoints.map((wp: any, i: number) => (
                     <div
                       key={i}
-                      className="absolute w-2.5 h-2.5 rounded-full border border-[var(--color-accent)] bg-[var(--bg-secondary)] cursor-grab z-40"
+                      className="absolute w-2.5 h-2.5 rounded-full border border-[var(--color-accent)] bg-[var(--color-bg-secondary)] cursor-grab z-40"
                       style={{ left: wp.x, top: wp.y, transform: 'translate(-50%, -50%)' }}
                       onPointerDown={(e) => {
                         e.stopPropagation();
@@ -3011,7 +3011,7 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
                     />
                   )) : (
                     <div
-                      className="absolute w-2.5 h-2.5 rounded-full border border-[var(--color-accent)] bg-[var(--bg-secondary)] cursor-grab z-40"
+                      className="absolute w-2.5 h-2.5 rounded-full border border-[var(--color-accent)] bg-[var(--color-bg-secondary)] cursor-grab z-40"
                       style={{ left: (sp.x + tp.x) / 2, top: (sp.y + tp.y) / 2, transform: 'translate(-50%, -50%)' }}
                       onPointerDown={(e) => {
                         e.stopPropagation();
@@ -3150,7 +3150,7 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
         {isOutOfView && (
           <button
             onClick={handleGoBackToContent}
-            className="absolute top-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-[var(--text-primary)] rounded-full shadow-lg font-mono text-xs flex items-center gap-2 hover:bg-[var(--bg-tertiary)] transition-all duration-200 animate-in fade-in slide-in-from-top-4"
+            className="absolute top-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded-full shadow-lg font-mono text-xs flex items-center gap-2 hover:bg-[var(--color-bg-tertiary)] transition-all duration-200 animate-in fade-in slide-in-from-top-4"
           >
             <Navigation size={14} />
             Go back to content
@@ -3163,7 +3163,7 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
 
 const CanvasTool = ({ icon, active, onClick }: { icon: any, active: boolean, onClick: any }) => (
   <button
-    className={`p-1.5 rounded transition-colors ${active ? 'bg-[var(--text-primary)] text-[var(--bg-primary)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]'}`}
+    className={`p-1.5 rounded transition-colors ${active ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-primary)]' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'}`}
     onClick={onClick}
   >
     {icon}
@@ -3182,7 +3182,7 @@ const SHORTCUTS = [
   { action: 'Toggle Theme', mac: 'Cmd + Shift + L', win: 'Ctrl + Shift + L', keywords: ['theme', 'dark', 'light', 'mode', 'toggle'] },
 ];
 
-const SettingsPage = ({ appFontClass, onAppFontChange }: { appFontClass: string, onAppFontChange: (value: string) => void }) => {
+const SettingsPage = ({ appFontClass, onAppFontChange, onClose }: { appFontClass: string, onAppFontChange: (value: string) => void, onClose: () => void }) => {
   const [activeTab, setActiveTab] = useState<'preferences' | 'shortcuts'>('preferences');
   const [shortcutSearch, setShortcutSearch] = useState('');
 
@@ -3192,21 +3192,28 @@ const SettingsPage = ({ appFontClass, onAppFontChange }: { appFontClass: string,
   );
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-y-auto">
+    <div className="flex flex-col h-full bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] overflow-y-auto">
       <div className="max-w-3xl mx-auto w-full p-8 md:p-12">
+        <button
+          onClick={onClose}
+          className="flex items-center gap-1.5 text-[13px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors mb-6"
+        >
+          <ArrowLeft size={16} />
+          Back to Home
+        </button>
         <h1 className="text-4xl font-semibold mb-2">Settings</h1>
-        <p className="text-[var(--text-secondary)] mb-8">Manage your preferences and integrations.</p>
+        <p className="text-[var(--color-text-secondary)] mb-8">Manage your preferences and integrations.</p>
 
         {/* Tabs */}
-        <div className="flex gap-4 border-b border-[var(--border-primary)] mb-8">
+        <div className="flex gap-4 border-b border-[var(--color-border)] mb-8">
           <button
-            className={`pb-2 px-1 text-[13px] font-medium transition-colors border-b-2 ${activeTab === 'preferences' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+            className={`pb-2 px-1 text-[13px] font-medium transition-colors border-b-2 ${activeTab === 'preferences' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'}`}
             onClick={() => setActiveTab('preferences')}
           >
             Preferences (early access)
           </button>
           <button
-            className={`pb-2 px-1 text-[13px] font-medium transition-colors border-b-2 ${activeTab === 'shortcuts' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+            className={`pb-2 px-1 text-[13px] font-medium transition-colors border-b-2 ${activeTab === 'shortcuts' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'}`}
             onClick={() => setActiveTab('shortcuts')}
           >
             Keyboard Shortcuts
@@ -3217,13 +3224,13 @@ const SettingsPage = ({ appFontClass, onAppFontChange }: { appFontClass: string,
           {activeTab === 'preferences' ? (
             <section className="animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="flex items-center gap-2 mb-4">
-                <Type className="text-[var(--text-secondary)]" size={20} />
+                <Type className="text-[var(--color-text-secondary)]" size={20} />
                 <h2 className="text-2xl font-semibold">Appearance</h2>
               </div>
-              <p className="text-[var(--text-secondary)] mb-6 text-sm leading-relaxed">
+              <p className="text-[var(--color-text-secondary)] mb-6 text-sm leading-relaxed">
                 Set a default font for the whole app interface and note editor.
               </p>
-              <div className="border border-[var(--border-primary)] rounded-lg p-4 bg-[var(--bg-secondary)]">
+              <div className="border border-[var(--color-border)] rounded-lg p-4 bg-[var(--color-bg-secondary)]">
                 <label className="block text-sm font-medium mb-2">Preferred App Font</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {FONT_OPTIONS.map((font) => {
@@ -3235,16 +3242,16 @@ const SettingsPage = ({ appFontClass, onAppFontChange }: { appFontClass: string,
                         onClick={() => onAppFontChange(font.value)}
                         className={`text-left px-3 py-2 rounded-md border transition-colors ${isActive
                             ? 'border-[var(--brand)] bg-[var(--brand-subtle)]'
-                            : 'border-[var(--border-primary)] bg-[var(--bg-primary)] hover:border-[var(--border-secondary)]'
+                            : 'border-[var(--color-border)] bg-[var(--color-bg-primary)] hover:border-[var(--color-border-secondary)]'
                           }`}
                       >
                         <div className={`text-[13px] font-medium ${font.value}`}>{font.name}</div>
-                        <div className="text-[11px] text-[var(--text-secondary)] mt-0.5">{font.label}</div>
+                        <div className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">{font.label}</div>
                       </button>
                     );
                   })}
                 </div>
-                <p className={`mt-3 text-sm text-[var(--text-secondary)] ${appFontClass}`}>
+                <p className={`mt-3 text-sm text-[var(--color-text-secondary)] ${appFontClass}`}>
                   Preview: The quick brown fox jumps over the lazy dog.
                 </p>
               </div>
@@ -3533,6 +3540,12 @@ export default function App() {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
 
+  // Refs for keyboard handler (avoid re-registering listeners)
+  const activeFileIdRef = useRef(activeFileId);
+  activeFileIdRef.current = activeFileId;
+  const showSettingsRef = useRef(showSettings);
+  showSettingsRef.current = showSettings;
+
   const getTagColor = (tag: string) => {
     const colors = [
       'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
@@ -3583,6 +3596,10 @@ export default function App() {
     const saved = storage.get<FileItem[]>('files');
     if (saved) {
       setFiles(saved);
+      const savedId = storage.get<string>('activeFileId');
+      if (savedId && saved.some(f => f.id === savedId)) {
+        setActiveFileId(savedId);
+      }
     } else {
       setFiles([
         { id: '1', type: 'note', title: 'Welcome Note', parentId: null, content: '<h1>Welcome to BoardsNote</h1><p>Start typing...</p>', createdAt: Date.now(), updatedAt: Date.now() },
@@ -3601,6 +3618,12 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [files, unsavedChanges]);
+
+  useEffect(() => {
+    if (activeFileId) {
+      storage.set('activeFileId', activeFileId);
+    }
+  }, [activeFileId]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -3627,6 +3650,32 @@ export default function App() {
       if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
         e.preventDefault();
         setSidebarOpen(prev => !prev);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '1') {
+        e.preventDefault();
+        setActiveMode('notes');
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '2') {
+        e.preventDefault();
+        setActiveMode('canvas');
+      }
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyN' && !e.shiftKey) {
+        e.preventDefault();
+        createFile('note');
+      }
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyN' && e.shiftKey) {
+        e.preventDefault();
+        createFile('canvas');
+      }
+      if (e.key === 'Escape' && showSettingsRef.current) {
+        setActiveFileId(null);
+        setShowSettings(false);
+        return;
+      }
+      if (e.key === 'Escape' && activeFileIdRef.current) {
+        const tag = (e.target as HTMLElement).tagName;
+        const isEditing = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable;
+        if (!isEditing) setActiveFileId(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -3791,7 +3840,7 @@ export default function App() {
                 {taggingFileId === f.id && (
                   <input
                     autoFocus
-                    className="text-[10px] px-1.5 py-0.5 bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded outline-none w-20 text-[var(--text-primary)]"
+                    className="text-[10px] px-1.5 py-0.5 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded outline-none w-20 text-[var(--color-text-primary)]"
                     placeholder="Add tag..."
                     value={newTag}
                     onChange={e => setNewTag(e.target.value)}
@@ -3815,7 +3864,7 @@ export default function App() {
             )}
           </div>
           {f.type === 'folder' && f.isOpen && (
-            <div className="ml-4 border-l border-[var(--border-primary)]">
+            <div className="ml-4 border-l border-[var(--color-border)]">
               {renderTree(f.id)}
             </div>
           )}
@@ -3824,6 +3873,7 @@ export default function App() {
   };
 
   const activeFile = files.find(f => f.id === activeFileId);
+  const appScreen = !activeFileId || showSettings ? 'browser' : 'editor';
   const noteMeta = useMemo(() => {
     if (!activeFile || activeFile.type !== 'note') return null;
     const text = (activeFile.content || '').replace(/<[^>]*>?/gm, ' ').trim();
@@ -3889,7 +3939,6 @@ export default function App() {
 
     return items;
   }, [activeFile, files]);
-  const isSidebarVisible = sidebarOpen;
 
   const FileMenuDropdown = ({ file, buttonRef }: { file: FileItem, buttonRef: React.RefObject<HTMLButtonElement | null> }) => {
     const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
@@ -3979,7 +4028,11 @@ export default function App() {
     return (
       <div key={f.id}>
         <div
-          className={`flex flex-col px-2 py-1.5 cursor-pointer rounded group relative transition-colors ${activeFileId === f.id && !showSettings ? 'bg-[var(--color-accent-tint)] text-[var(--color-accent)]' : 'hover:bg-[var(--color-surface-hover)]'}`}
+          className={`flex flex-col px-3 py-2 md:px-3 md:py-2.5 cursor-pointer rounded group relative transition-colors ${activeFileId === f.id && !showSettings
+            ? f.type === 'note'
+              ? 'bg-[var(--color-note-tint)] text-[var(--color-note)]'
+              : 'bg-[var(--color-canvas-tint)] text-[var(--color-canvas)]'
+            : 'hover:bg-[var(--color-surface-hover)]'}`}
           onClick={() => {
             setActiveFileId(f.id);
             setShowSettings(false);
@@ -4011,7 +4064,11 @@ export default function App() {
                   onClick={e => e.stopPropagation()}
                 />
               ) : (
-                <span className={`text-[13px] truncate ${activeFileId === f.id && !showSettings ? 'text-[var(--color-accent)] font-medium' : 'text-[var(--color-text-primary)]'}`}>{f.title || 'Untitled'}</span>
+                <span className={`text-[13px] truncate ${activeFileId === f.id && !showSettings
+                  ? f.type === 'note'
+                    ? 'text-[var(--color-note)] font-medium'
+                    : 'text-[var(--color-canvas)] font-medium'
+                  : 'text-[var(--color-text-primary)]'}`}>{f.title || 'Untitled'}</span>
               )}
             </div>
 
@@ -4035,103 +4092,49 @@ export default function App() {
   const renderSidebarFileItem = (f: FileItem) => <SidebarFileItem key={f.id} f={f} />;
 
   return (
-    <div className={`app-shell bg-[var(--color-shell-bg)] ${appFontClass}`}>
-      {/* Sidebar Panel - Inset style with fixed gap */}
+    <div className={`app-shell bg-[var(--color-page-bg)] ${appFontClass}`}>
+      {/* Sidebar — always in DOM for smooth width transitions */}
       <div
-        className={`flex flex-col h-full app-panel bg-[var(--color-sidebar-bg)] transition-all duration-300 ease-in-out no-print overflow-hidden ${sidebarOpen ? 'ml-2 mr-2 w-[200px] opacity-100' : 'ml-0 mr-0 w-0 opacity-0'}`}
+        className={`flex flex-col h-full bg-[var(--color-page-bg)] transition-all duration-300 ease-in-out no-print overflow-hidden shrink-0 ${
+          appScreen === 'editor' && sidebarOpen
+            ? 'w-[220px] md:w-[240px] opacity-100'
+            : 'w-0 opacity-0'
+        }`}
       >
-
-        {/* Mode Tabs — Symmetric padding for a centered look */}
-        <div className="flex px-2 py-2 gap-[var(--gap-size)] border-b border-[var(--border-primary)] shrink-0 justify-center">
-          <button
-            className={`flex-1 py-1.5 text-[13px] font-medium rounded-[var(--radius-tiny)] transition-colors ${activeMode === 'notes' && !showSettings ? 'bg-[var(--brand)] text-white' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]'}`}
-            onClick={() => { setActiveMode('notes'); setShowSettings(false); }}
-          >
-            Notes
-          </button>
-          <button
-            className={`flex-1 py-1.5 text-[13px] font-medium rounded-[var(--radius-tiny)] transition-colors ${activeMode === 'canvas' && !showSettings ? 'bg-[var(--brand)] text-white' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]'}`}
-            onClick={() => { setActiveMode('canvas'); setShowSettings(false); }}
-          >
-            Canvas
-          </button>
+        {/* Home row */}
+        <div
+          className="flex items-center px-2 py-1.5 gap-2 cursor-pointer rounded hover:bg-[var(--color-surface-hover)] transition-colors shrink-0 mx-2 mt-2"
+          onClick={() => { setActiveFileId(null); setShowSettings(false); }}
+        >
+          <ArrowLeft size={14} className="text-[var(--color-text-secondary)]" />
+          <span className="text-[13px] text-[var(--color-text-secondary)]">Home</span>
         </div>
 
-        {/* Search */}
-        <div className="p-2 shrink-0 border-b border-[var(--border-primary)]">
-          <button
-            className="w-full h-9 flex items-center gap-[var(--gap-size)] bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-[var(--radius-tiny)] px-3 text-[13px] text-[var(--text-secondary)] hover:border-[var(--border-secondary)] transition-colors"
-            onClick={() => setShowCommandPalette(true)}
-          >
-            <Search size={14} />
-            <span className="flex-1 text-left">Search...</span>
-            <kbd className="text-[10px] font-mono bg-[var(--bg-tertiary)] px-1.5 py-0.5 rounded-[var(--radius-tiny)] border border-[var(--border-primary)]">Cmd K</kbd>
-          </button>
-          <button
-            className="w-full mt-2 h-9 px-3 rounded-[var(--radius-tiny)] text-[14px] font-medium border border-[var(--border-primary)] flex items-center justify-center gap-1.5 transition-colors"
-            style={{
-              color: 'var(--brand)',
-              backgroundColor: 'transparent',
-            }}
-            onClick={createActiveModeFile}
-            title={activeMode === 'notes' ? 'Create new note' : 'Create new canvas'}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--brand-subtle)';
-              e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--brand) 30%, var(--border-primary))';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.borderColor = 'var(--border-primary)';
-            }}
-          >
-            <Plus size={14} />
-            {activeMode === 'notes' ? 'Create new note' : 'Create new canvas'}
-          </button>
-        </div>
+        <div className="border-b border-[var(--color-border)] mx-2 my-2" />
 
         {/* File List */}
         <div className="flex-grow overflow-y-auto p-2">
-          <div className="mb-4">
-            <div className="text-[11px] font-medium text-[var(--text-secondary)] mb-2 px-2" style={{ letterSpacing: '0.03em' }}>
-              Favourite {activeMode === 'notes' ? 'Notes' : 'Canvas'}
-            </div>
-            {(() => {
-              const pinnedFiles = files.filter(f => (activeMode === 'notes' ? f.type !== 'canvas' : f.type !== 'note') && f.type !== 'folder' && f.isPinned);
-              if (pinnedFiles.length === 0) {
-                return (
-                  <div className="px-2 py-1.5 text-[12px] text-[var(--text-secondary)] italic">
-                    No favourite {activeMode === 'notes' ? 'notes' : 'canvas'}
-                  </div>
-                );
-              }
-              const showScroll = pinnedFiles.length > 5;
-              return (
-                <div className={`${showScroll ? 'h-[200px] overflow-y-auto pr-1' : ''}`}>
-                  {pinnedFiles
-                    .sort((a, b) => b.updatedAt - a.updatedAt)
-                    .slice(0, 10)
-                    .map(renderSidebarFileItem)}
-                </div>
-              );
-            })()}
-          </div>
-          <div>
-            <div className="text-[11px] font-medium text-[var(--text-secondary)] mb-2 px-2" style={{ letterSpacing: '0.03em' }}>
-              Recent {activeMode === 'notes' ? 'Notes' : 'Canvas'}
-            </div>
-            {files
-              .filter(f => (activeMode === 'notes' ? f.type !== 'canvas' : f.type !== 'note') && f.type !== 'folder' && !f.isPinned)
-              .sort((a, b) => b.updatedAt - a.updatedAt)
-              .slice(0, 15)
-              .map(renderSidebarFileItem)}
+          {files
+            .filter(f => (activeMode === 'notes' ? f.type === 'note' : f.type === 'canvas'))
+            .sort((a, b) => b.updatedAt - a.updatedAt)
+            .slice(0, 30)
+            .map(renderSidebarFileItem)}
+
+          {/* New file row */}
+          <div
+            className="flex items-center px-2 py-1.5 gap-2 cursor-pointer rounded hover:bg-[var(--color-surface-hover)] transition-colors mt-1"
+            onClick={createActiveModeFile}
+          >
+            <Plus size={14} className="text-[var(--brand)]" />
+            <span className="text-[13px] text-[var(--brand)]">New {activeMode === 'notes' ? 'Note' : 'Board'}</span>
           </div>
         </div>
 
-        {/* Footer: Actions */}
-        <div className="border-t border-[var(--border-primary)] p-2 flex items-center justify-between shrink-0">
+        {/* Footer */}
+        <div className="border-t border-[var(--color-border)] p-2 flex items-center justify-between shrink-0">
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-[var(--radius-tiny)] text-[var(--text-secondary)] transition-colors"
+            className="p-1.5 md:p-2.5 hover:bg-[var(--color-bg-tertiary)] rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors"
             style={{ ['--stroke-width' as any]: '1.2px' }}
             title="Toggle Theme"
           >
@@ -4139,7 +4142,7 @@ export default function App() {
           </button>
 
           <button
-            className={`p-1.5 rounded-[var(--radius-tiny)] text-[var(--text-secondary)] transition-colors ${showSettings ? 'bg-[var(--bg-tertiary)]' : 'hover:bg-[var(--bg-tertiary)]'}`}
+            className={`p-1.5 md:p-2.5 rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors ${showSettings ? 'bg-[var(--color-bg-tertiary)]' : 'hover:bg-[var(--color-bg-tertiary)]'}`}
             onClick={() => setShowSettings(true)}
             style={{ ['--stroke-width' as any]: '1.2px' }}
             title="Settings"
@@ -4149,52 +4152,67 @@ export default function App() {
         </div>
       </div>
 
-      {/* Resizer/Gap Area - 8px gap with shell-colored hover */}
-      {sidebarOpen ? (
-        <div
-          className="sidebar-resizer w-2 bg-transparent hover:bg-[var(--color-shell-bg)] transition-all duration-300 ease-in-out relative"
-          onClick={() => setSidebarOpen(false)}
-          title="Close Sidebar"
-        >
-          <div className="sidebar-resizer-line opacity-100" />
-        </div>
-      ) : (
-        <>
-          {/* Invisible hover detector at shell left edge - full height */}
+      {/* Resizer/Gap Area — only in editor mode */}
+      {appScreen === 'editor' && (
+        sidebarOpen ? (
           <div
-            className="absolute left-0 top-0 bottom-0 w-2 z-50 cursor-pointer"
-            onMouseEnter={() => setIsResizerHovered(true)}
-            onMouseLeave={() => setIsResizerHovered(false)}
-            onClick={() => setSidebarOpen(true)}
-          />
-          {/* Visible trigger - conditionally rendered only when hovered */}
-          {isResizerHovered && (
+            className="sidebar-resizer w-2 bg-transparent hover:bg-[var(--color-shell-bg)] transition-all duration-300 ease-in-out relative shrink-0"
+            onClick={() => setSidebarOpen(false)}
+            title="Close Sidebar"
+          >
+            <div className="sidebar-resizer-line opacity-100" />
+          </div>
+        ) : (
+          <>
             <div
-              className="sidebar-resizer-closed absolute top-0 bottom-0 left-2 w-1 z-40 cursor-pointer hover:bg-[var(--color-shell-bg)] rounded-[var(--radius-tiny)] transition-all duration-300 opacity-100"
+              className="absolute left-0 top-0 bottom-0 w-2 z-50 cursor-pointer"
+              onMouseEnter={() => setIsResizerHovered(true)}
+              onMouseLeave={() => setIsResizerHovered(false)}
               onClick={() => setSidebarOpen(true)}
-            >
-              <div className="sidebar-resizer-line-closed opacity-100" />
-            </div>
-          )}
-        </>
+            />
+            {isResizerHovered && (
+              <div
+                className="sidebar-resizer-closed absolute top-0 bottom-0 left-2 w-1 z-40 cursor-pointer hover:bg-[var(--color-shell-bg)] rounded-[var(--radius-tiny)] transition-all duration-300 opacity-100"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <div className="sidebar-resizer-line-closed opacity-100" />
+              </div>
+            )}
+          </>
+        )
       )}
 
-      {/* Main Content - Equal spacing when closed, shrinks on hover */}
-      <div
-        className={`flex-grow h-full overflow-hidden bg-[var(--color-editor-bg)] app-panel transition-all duration-300 ease-in-out ${sidebarOpen ? 'ml-0 mr-2' : (isResizerHovered ? 'ml-4 mr-0' : 'ml-0 mr-0')}`}
-      >
+      {/* Main Content */}
+      <div className="flex-grow h-full overflow-hidden bg-[var(--color-editor-bg)] app-panel transition-all duration-300 ease-in-out m-2">
         {showSettings ? (
-          <SettingsPage appFontClass={appFontClass} onAppFontChange={setAppFontClass} />
+          <div className="h-full animate-in fade-in duration-200" key="settings">
+            <SettingsPage appFontClass={appFontClass} onAppFontChange={setAppFontClass} onClose={() => { setActiveFileId(null); setShowSettings(false); }} />
+          </div>
         ) : activeFile ? (
-          activeFile.type === 'note' ? (
-            <NoteEditor key={activeFile.id} file={activeFile} updateFile={updateFile} appFontClass={appFontClass} noteMeta={noteMeta} activeMode={activeMode} />
-          ) : (
-            <CanvasEditor key={activeFile.id} file={activeFile} updateFile={updateFile} pendingSelect={pendingCanvasSelect} />
-          )
+          <div className="h-full animate-in fade-in duration-200" key={activeFile.id}>
+            {activeFile.type === 'note' ? (
+              <NoteEditor file={activeFile} updateFile={updateFile} appFontClass={appFontClass} noteMeta={noteMeta} activeMode={activeMode} />
+            ) : (
+              <CanvasEditor file={activeFile} updateFile={updateFile} pendingSelect={pendingCanvasSelect} />
+            )}
+          </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center gap-[var(--gap-size)] content-panel">
-            <img src={boardsNoteLogo} alt="BoardsNote" className="h-32 opacity-[0.8] object-contain mx-auto" />
-            <p className="text-[var(--text-secondary)] text-[13px] font-medium">Select a note or canvas to start</p>
+          <div className="h-full animate-in fade-in duration-200" key="browser">
+            <Browser
+              files={files}
+              activeMode={activeMode}
+              onModeChange={(mode) => { setActiveMode(mode); setShowSettings(false); }}
+              theme={theme}
+              onThemeToggle={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              onOpenSettings={() => setShowSettings(true)}
+              onOpenSearch={() => setShowCommandPalette(true)}
+              onFileSelect={(id) => { setActiveFileId(id); setShowSettings(false); }}
+              onCreateFile={createActiveModeFile}
+              onCreateFileOfType={(type) => { createFile(type); setShowSettings(false); }}
+              onRenameFile={(id, title) => updateFile(id, { title })}
+              onTogglePin={(id) => { const f = files.find(f => f.id === id); if (f) updateFile(id, { isPinned: !f.isPinned }); }}
+              onDeleteFile={(id) => { const f = files.find(f => f.id === id); if (f) setFilesToDelete([f]); }}
+            />
           </div>
         )}
       </div>
