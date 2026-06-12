@@ -71,7 +71,7 @@ export function Browser({
     return (
       <div
         key={file.id}
-        className="relative flex flex-col p-4 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-[var(--radius-tiny)] hover:border-[var(--color-border-secondary)] hover:shadow-sm transition-all cursor-pointer group"
+        className="relative flex flex-col p-4 bg-[var(--color-bg-primary)] border border-[var(--color-border-secondary)] rounded-[var(--radius-tiny)] shadow-sm hover:shadow-md hover:border-[var(--color-border)] transition-all cursor-pointer group"
         onClick={(e) => {
           if (renamingFileId !== null) return;
           const target = e.target as HTMLElement;
@@ -106,7 +106,7 @@ export function Browser({
               onClick={e => e.stopPropagation()}
             />
           ) : (
-            <h3 className="text-sm font-medium text-[var(--color-text-primary)] truncate leading-relaxed">{file.title || 'Untitled'}</h3>
+            <h3 className="text-base font-semibold text-[var(--color-text-primary)] truncate leading-relaxed">{file.title || 'Untitled'}</h3>
           )}
           {!isRenaming && (
             <button
@@ -182,14 +182,14 @@ export function Browser({
   const anchorId = menuAnchor?.id;
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-[var(--color-bg-secondary)]">
       {/* Topbar */}
-      <div className="h-12 flex items-center justify-between px-4 border-b border-[var(--color-border)] shrink-0">
-        <div className="pl-1">
+      <div className="h-12 grid grid-cols-[1fr_auto_1fr] items-center px-4 border-b border-[var(--color-border)] shrink-0">
+        <div className="pl-1 justify-self-start">
           <img src={boardsNoteLogo} alt="BoardsNote" className="h-7 w-auto" />
         </div>
 
-        <div className="inline-flex items-center p-0.5 rounded-full bg-[var(--color-bg-tertiary)]">
+        <div className="inline-flex items-center p-0.5 rounded-full bg-[var(--color-bg-tertiary)] justify-self-center">
           <button
             className={`px-3 py-1 text-[13px] font-medium rounded-full transition-colors ${
               activeMode === 'notes'
@@ -212,15 +212,15 @@ export function Browser({
           </button>
         </div>
 
-        <div className="flex items-center gap-1">
-          <button className="p-1.5 hover:bg-[var(--color-bg-tertiary)] rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors" onClick={onOpenSearch} title="Search (Cmd K)">
-            <Search size={16} />
+        <div className="flex items-center gap-1 justify-self-end">
+          <button className="p-2 hover:bg-[var(--color-bg-tertiary)] rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors" onClick={onOpenSearch} title="Search (Cmd K)">
+            <Search size={18} />
           </button>
-          <button className="p-1.5 hover:bg-[var(--color-bg-tertiary)] rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors" onClick={onThemeToggle} title="Toggle Theme">
-            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          <button className="p-2 hover:bg-[var(--color-bg-tertiary)] rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors" onClick={onThemeToggle} title="Toggle Theme">
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-          <button className="p-1.5 hover:bg-[var(--color-bg-tertiary)] rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors" onClick={onOpenSettings} title="Settings">
-            <Settings size={16} />
+          <button className="p-2 hover:bg-[var(--color-bg-tertiary)] rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors" onClick={onOpenSettings} title="Settings">
+            <Settings size={18} />
           </button>
         </div>
       </div>
@@ -228,7 +228,7 @@ export function Browser({
       <div className="flex-grow overflow-y-auto flex flex-col">
         <div className="flex items-center justify-between px-6 pt-6 pb-4">
           <div className="flex items-center gap-2">
-            <span className="text-lg font-semibold text-[var(--color-text-primary)]">{modeLabel}</span>
+            <span className="text-[20.2px] font-semibold text-[var(--color-text-primary)]">{modeLabel}</span>
             {(hasPinned || hasRecent) && <span className="text-sm text-[var(--color-text-muted)]">({modeFiles.length})</span>}
           </div>
           {(hasPinned || hasRecent) && (

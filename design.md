@@ -100,6 +100,12 @@ Tag colors are auto-generated from a palette of 14 colors (red, orange, amber, g
 - H2: `calc(14px * 1.2 * 1.2)` = 20.2px  
 - H3: `calc(14px * 1.2)` = 16.8px
 
+#### Component Typography
+| Context | Size | Weight | Source |
+|---------|------|--------|--------|
+| Page header (Browser) | 20.2px (note-scale H2) | 600 (font-semibold) | `--scale-note` |
+| Card title | 16px (text-base) | 600 (font-semibold) | Base + 2px
+
 ---
 
 ### 3. Spacing
@@ -121,7 +127,7 @@ Tag colors are auto-generated from a palette of 14 colors (red, orange, amber, g
 #### Layout Grid
 - **Inset shell gap**: 6px (0.375rem) — gap around entire app
 - **Sidebar width**: 220px fixed (240px on tablet `md:`)
-- **Resizer width**: 8px (sidebar toggle area)
+- **Editor topbar height**: 48px (h-12)
 - **Max content width**: 4xl (max-w-4xl) for notes
 
 ---
@@ -275,7 +281,7 @@ Tag colors are auto-generated from a palette of 14 colors (red, orange, amber, g
 - Each file item shows a small dot marker: `var(--color-note)` for notes, `var(--color-canvas)` for canvas boards
 - Active note file: `var(--color-note-tint)` background, `var(--color-note)` text
 - Active canvas file: `var(--color-canvas-tint)` background, `var(--color-canvas)` text
-- Collapsed: 0px width with 8px resizer handle
+- Collapsed: 0px width, toggled via PanelLeft button in editor topbar or Cmd/Ctrl+\ shortcut
 - Footer sync status indicator: dot + label using `var(--color-sync-ok)` (synced), `var(--color-sync-busy)` (syncing), or `var(--color-sync-error)` (error)
 
 #### Canvas Toolbar

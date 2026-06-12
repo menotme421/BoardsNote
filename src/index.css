@@ -192,80 +192,6 @@ body {
   position: relative;
 }
 
-/* Sidebar Resizer/Gap Area */
-.sidebar-resizer {
-  position: relative;
-  flex-shrink: 0;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: width 0.3s ease, background-color 0.15s ease;
-  cursor: pointer;
-}
-
-.sidebar-resizer:hover {
-  background-color: var(--color-bg-tertiary);
-}
-
-.sidebar-resizer-line {
-  width: 2px;
-  height: 48px;
-  background-color: var(--brand);
-  border-radius: 1px;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.sidebar-resizer:hover .sidebar-resizer-line {
-  opacity: 1;
-}
-
-/* Closed sidebar resizer (thin hover target on left edge) */
-.sidebar-resizer-closed {
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  width: 4px;
-  z-index: 40;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.sidebar-resizer-closed:hover {
-  background-color: var(--color-shell-bg);
-}
-
-.sidebar-resizer-line-closed {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 2px;
-  height: 48px;
-  background-color: var(--color-accent);
-  border-radius: 1px;
-  transition: opacity 0.15s ease, height 0.2s ease;
-}
-
-.sidebar-resizer-closed:hover .sidebar-resizer-line-closed {
-  opacity: 1;
-  height: 64px;
-}
-
-/* Content area with equal padding when sidebar closed */
-.content-panel {
-  transition: padding 0.3s ease;
-  padding: 24px;
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-}
-
-/* When sidebar is open, the resizer provides the visual gap */
-/* Content maintains equal visual spacing via the 8px resizer gap */
-
 /* Panel Base Styles */
 .app-panel {
   border-radius: var(--radius-tiny);
@@ -1223,6 +1149,17 @@ svg.lucide {
   to {
     opacity: 1;
     transform: translate(0, -50%);
+  }
+}
+
+@keyframes slideInFromRightFlat {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 

@@ -474,18 +474,6 @@ const NoteEditor = ({ file, updateFile, appFontClass, noteMeta, activeMode }: { 
       <div className="flex flex-grow overflow-hidden relative">
         <div className="flex-grow overflow-y-auto print:p-0 bg-[var(--color-bg-primary)] px-10 py-8" ref={scrollContainerRef}>
           <div className="w-full max-w-4xl mx-auto pb-24">
-            <input
-              className={`w-full bg-transparent border-none outline-none text-3xl font-semibold mb-5 pl-8 placeholder:text-[var(--color-text-secondary)] ${appFontClass}`}
-              placeholder="Untitled"
-              value={file.title || ''}
-              onChange={(e) => updateFile(file.id, { title: e.target.value })}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === 'Tab') {
-                  e.preventDefault();
-                  editor.commands.focus('start');
-                }
-              }}
-            />
 
             <BubbleMenu editor={editor} shouldShow={({ editor }) => {
               if (isScrolling || forceHide) return false;
@@ -730,7 +718,6 @@ const NoteEditor = ({ file, updateFile, appFontClass, noteMeta, activeMode }: { 
         editorContainerRef.current
       )}
 
-      <PropertiesPanel activeMode={activeMode} noteMeta={noteMeta} />
     </div>
   );
 };
@@ -1156,9 +1143,8 @@ const CanvasNode = React.memo(({
   );
 });
 
-const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, updateFile: any, key?: string, pendingSelect?: any }) => {
+const CanvasEditor = ({ file, updateFile, pendingSelect, transform, setTransform }: { file: FileItem, updateFile: any, key?: string, pendingSelect?: any, transform: { x: number, y: number, scale: number }, setTransform: React.Dispatch<React.SetStateAction<{ x: number, y: number, scale: number }>> }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [tool, setTool] = useState('select');
   const [nodes, setNodes] = useState<any[]>(file.elements?.nodes || []);
   const [edges, setEdges] = useState<any[]>(() => {
@@ -2603,30 +2589,6 @@ const CanvasEditor = ({ file, updateFile, pendingSelect }: { file: FileItem, upd
 
   return (
     <div className="flex flex-col h-full bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] overflow-hidden">
-      <div className="h-12 border-b border-[var(--color-border)] flex items-center justify-between px-4 shrink-0 z-10 bg-[var(--color-bg-primary)]">
-        <input
-          className="bg-transparent text-xl font-semibold outline-none w-1/3"
-          value={file.title}
-          onChange={(e) => updateFile(file.id, { title: e.target.value })}
-        />
-        <div className="flex items-center gap-0.5 text-[13px] text-[var(--color-text-secondary)]">
-          <button className="toolbar-btn toolbar-btn-secondary" onClick={() => setTransform(p => ({ ...p, scale: Math.max(p.scale / 1.01, 0.1) }))} title="Zoom Out (Ctrl+-)">
-            <ZoomOut size={16} />
-          </button>
-          <span
-            className="font-mono min-w-[36px] text-center cursor-pointer hover:text-[var(--color-text-primary)]"
-            onDoubleClick={() => setTransform(prev => ({ ...prev, scale: 1 }))}
-            title="Double-click to reset zoom"
-          >{Math.round(transform.scale * 100)}%</span>
-          <button className="toolbar-btn toolbar-btn-secondary" onClick={() => setTransform(p => ({ ...p, scale: Math.min(p.scale * 1.01, 5) }))} title="Zoom In (Ctrl++)">
-            <ZoomIn size={16} />
-          </button>
-          <button className="toolbar-btn toolbar-btn-secondary" onClick={() => setTransform({ x: 0, y: 0, scale: 1 })} title="Reset zoom to 100%">
-            <Maximize size={16} />
-          </button>
-        </div>
-      </div>
-
       <div className="flex flex-grow overflow-hidden relative">
         <CanvasToolbar
           activeTool={tool}
@@ -3406,28 +3368,6 @@ const PropertiesPanel = ({
     }
   ];
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as HTMLElement)) {
-        setIsOpen(false);
-      }
-    };
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOpen(false);
-    };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleEscape);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isOpen]);
-
   const toggleCard = (index: number) => {
     setExpandedCards(prev => ({
       ...prev,
@@ -3436,15 +3376,21 @@ const PropertiesPanel = ({
   };
 
   return (
-    <div ref={panelRef} className="absolute top-2 right-2 z-10">
+    <div ref={panelRef} className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="p-2 rounded-[var(--radius-tiny)] flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)] transition-colors"
+      >
+        <Info size={16} />
+      </button>
       {isOpen && (
         <div
-          className="absolute right-0 top-full mt-1 w-[260px] max-h-[400px] flex flex-col bg-[var(--color-editor-bg)] border border-[var(--color-border)] rounded-[var(--radius-tiny)] overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.08)]"
+          className="absolute right-0 top-full mt-1 w-[260px] max-h-[260px] flex flex-col bg-[var(--color-editor-bg)] border border-[var(--color-border)] rounded-[var(--radius-tiny)] overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.08)] z-50"
           style={{
-            animation: 'slideInFromRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            animation: 'slideInFromRightFlat 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
           }}
         >
-          <div className="flex-1 overflow-y-auto py-2">
+          <div className="flex-1 overflow-y-auto py-1.5">
             {noteMeta && (
               <>
                 <div className="px-3 py-2">
@@ -3504,13 +3450,6 @@ const PropertiesPanel = ({
           </div>
         </div>
       )}
-
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-8 h-8 rounded-[var(--radius-tiny)] flex items-center justify-center bg-[var(--color-editor-bg)] border border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-text-primary)] hover:text-[var(--color-text-primary)] transition-colors"
-      >
-        <Info size={14} />
-      </button>
     </div>
   );
 };
@@ -3521,7 +3460,7 @@ export default function App() {
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [appFontClass, setAppFontClass] = useState('font-inter');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [isResizerHovered, setIsResizerHovered] = useState(false);
+  const [canvasTransform, setCanvasTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [pendingCanvasSelect, setPendingCanvasSelect] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -3691,7 +3630,7 @@ export default function App() {
     const newFile: FileItem = {
       id: Math.random().toString(36).substr(2, 9),
       type,
-      title: type === 'note' ? '' : `New ${type}`,
+      title: '',
       parentId: null,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -4103,14 +4042,14 @@ export default function App() {
       >
         {/* Home row */}
         <div
-          className="flex items-center px-2 py-1.5 gap-2 cursor-pointer rounded hover:bg-[var(--color-surface-hover)] transition-colors shrink-0 mx-2 mt-2"
+          className="flex items-center px-3 py-2 gap-2 cursor-pointer rounded-[var(--radius-tiny)] hover:bg-[var(--color-bg-tertiary)] transition-colors shrink-0 mx-2 mt-3"
           onClick={() => { setActiveFileId(null); setShowSettings(false); }}
         >
-          <ArrowLeft size={14} className="text-[var(--color-text-secondary)]" />
-          <span className="text-[13px] text-[var(--color-text-secondary)]">Home</span>
+          <ArrowLeft size={16} className="text-[var(--color-text-primary)]" strokeWidth={2} />
+          <span className="text-[13px] font-semibold text-[var(--color-text-primary)]">Home</span>
         </div>
 
-        <div className="border-b border-[var(--color-border)] mx-2 my-2" />
+        <div className="border-b border-[var(--color-border)] mx-2 mt-3 mb-1" />
 
         {/* File List */}
         <div className="flex-grow overflow-y-auto p-2">
@@ -4131,56 +4070,24 @@ export default function App() {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-[var(--color-border)] p-2 flex items-center justify-between shrink-0">
+        <div className="border-t border-[var(--color-border)] px-2 pt-2 pb-4 flex items-center gap-0.5 shrink-0">
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-1.5 md:p-2.5 hover:bg-[var(--color-bg-tertiary)] rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors"
-            style={{ ['--stroke-width' as any]: '1.2px' }}
+            className="p-2 hover:bg-[var(--color-bg-tertiary)] rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors"
             title="Toggle Theme"
           >
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
 
           <button
-            className={`p-1.5 md:p-2.5 rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors ${showSettings ? 'bg-[var(--color-bg-tertiary)]' : 'hover:bg-[var(--color-bg-tertiary)]'}`}
+            className={`p-2 rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors ${showSettings ? 'bg-[var(--color-bg-tertiary)]' : 'hover:bg-[var(--color-bg-tertiary)]'}`}
             onClick={() => setShowSettings(true)}
-            style={{ ['--stroke-width' as any]: '1.2px' }}
             title="Settings"
           >
             <Settings size={16} />
           </button>
         </div>
       </div>
-
-      {/* Resizer/Gap Area — only in editor mode */}
-      {appScreen === 'editor' && (
-        sidebarOpen ? (
-          <div
-            className="sidebar-resizer w-2 bg-transparent hover:bg-[var(--color-shell-bg)] transition-all duration-300 ease-in-out relative shrink-0"
-            onClick={() => setSidebarOpen(false)}
-            title="Close Sidebar"
-          >
-            <div className="sidebar-resizer-line opacity-100" />
-          </div>
-        ) : (
-          <>
-            <div
-              className="absolute left-0 top-0 bottom-0 w-2 z-50 cursor-pointer"
-              onMouseEnter={() => setIsResizerHovered(true)}
-              onMouseLeave={() => setIsResizerHovered(false)}
-              onClick={() => setSidebarOpen(true)}
-            />
-            {isResizerHovered && (
-              <div
-                className="sidebar-resizer-closed absolute top-0 bottom-0 left-2 w-1 z-40 cursor-pointer hover:bg-[var(--color-shell-bg)] rounded-[var(--radius-tiny)] transition-all duration-300 opacity-100"
-                onClick={() => setSidebarOpen(true)}
-              >
-                <div className="sidebar-resizer-line-closed opacity-100" />
-              </div>
-            )}
-          </>
-        )
-      )}
 
       {/* Main Content */}
       <div className="flex-grow h-full overflow-hidden bg-[var(--color-editor-bg)] app-panel transition-all duration-300 ease-in-out m-2">
@@ -4189,11 +4096,47 @@ export default function App() {
             <SettingsPage appFontClass={appFontClass} onAppFontChange={setAppFontClass} onClose={() => { setActiveFileId(null); setShowSettings(false); }} />
           </div>
         ) : activeFile ? (
-          <div className="h-full animate-in fade-in duration-200" key={activeFile.id}>
+          <div className="h-full flex flex-col animate-in fade-in duration-200" key={activeFile.id}>
+            {/* Shared Editor Topbar */}
+            <div className="h-12 border-b border-[var(--color-border)] flex items-center px-3 shrink-0 z-10 bg-[var(--color-editor-bg)]">
+              <button
+                onClick={() => setSidebarOpen(prev => !prev)}
+                className="p-2 hover:bg-[var(--color-bg-tertiary)] rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors"
+                title="Toggle Sidebar"
+              >
+                <PanelLeft size={18} />
+              </button>
+              <input
+                className="bg-transparent text-base font-semibold outline-none ml-2 flex-1 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
+                value={activeFile.title}
+                placeholder="Untitled"
+                onChange={(e) => updateFile(activeFile.id, { title: e.target.value })}
+              />
+              <div className="ml-auto flex items-center gap-0.5">
+                {activeFile.type === 'canvas' && (
+                  <>
+                    <button className="toolbar-btn toolbar-btn-secondary" onClick={() => setCanvasTransform(p => ({ ...p, scale: Math.max(p.scale / 1.01, 0.1) }))} title="Zoom Out (Ctrl+-)">
+                      <ZoomOut size={16} />
+                    </button>
+                    <span
+                      className="font-mono min-w-[36px] text-center text-[13px] text-[var(--color-text-secondary)] cursor-pointer hover:text-[var(--color-text-primary)]"
+                      onDoubleClick={() => setCanvasTransform(prev => ({ ...prev, scale: 1 }))}
+                    >{Math.round(canvasTransform.scale * 100)}%</span>
+                    <button className="toolbar-btn toolbar-btn-secondary" onClick={() => setCanvasTransform(p => ({ ...p, scale: Math.min(p.scale * 1.01, 5) }))} title="Zoom In (Ctrl++)">
+                      <ZoomIn size={16} />
+                    </button>
+                    <button className="toolbar-btn toolbar-btn-secondary" onClick={() => setCanvasTransform({ x: 0, y: 0, scale: 1 })} title="Reset zoom to 100%">
+                      <Maximize size={16} />
+                    </button>
+                  </>
+                )}
+                {activeFile.type === 'note' && <PropertiesPanel noteMeta={noteMeta} activeMode={activeMode} />}
+              </div>
+            </div>
             {activeFile.type === 'note' ? (
               <NoteEditor file={activeFile} updateFile={updateFile} appFontClass={appFontClass} noteMeta={noteMeta} activeMode={activeMode} />
             ) : (
-              <CanvasEditor file={activeFile} updateFile={updateFile} pendingSelect={pendingCanvasSelect} />
+              <CanvasEditor file={activeFile} updateFile={updateFile} pendingSelect={pendingCanvasSelect} transform={canvasTransform} setTransform={setCanvasTransform} />
             )}
           </div>
         ) : (
