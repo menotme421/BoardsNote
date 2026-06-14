@@ -1,5 +1,6 @@
 import React from 'react';
 import { Type, Image as ImageIcon, Link as LinkIcon, FileText, Lock, Unlock, ChevronDown, ChevronUp, Palette } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const COLORS = [
   '#fef08a', // yellow
@@ -25,34 +26,18 @@ export const IconRow = ({
     >
       {/* Type Switcher */}
       <div className="flex items-center gap-1 border-r border-[var(--color-border)] pr-2 mr-1">
-        <button 
-          className={`p-1.5 rounded hover:bg-[var(--color-bg-secondary)] ${node.type === 'sticky-note' ? 'text-[var(--color-accent)] bg-[var(--color-accent-tint)]' : 'text-[var(--color-text-secondary)]'}`}
-          onClick={() => onUpdateNode(node.id, { type: 'sticky-note', backgroundColor: '#fef08a', fontFamily: 'var(--font-kalam)' })}
-          title="Sticky Note"
-        >
+        <Button variant="ghost" size="icon" className={`p-1.5 w-auto h-auto ${node.type === 'sticky-note' ? 'text-[var(--color-accent)] bg-[var(--color-accent-tint)]' : 'text-[var(--color-text-secondary)]'}`} onClick={() => onUpdateNode(node.id, { type: 'sticky-note', backgroundColor: '#fef08a', fontFamily: 'var(--font-kalam)' })} title="Sticky Note">
           <FileText size={16} />
-        </button>
-        <button 
-          className={`p-1.5 rounded hover:bg-[var(--color-bg-secondary)] ${node.type === 'text-block' ? 'text-[var(--color-accent)] bg-[var(--color-accent-tint)]' : 'text-[var(--color-text-secondary)]'}`}
-          onClick={() => onUpdateNode(node.id, { type: 'text-block', backgroundColor: 'transparent', fontFamily: 'var(--font-sans)' })}
-          title="Text Block"
-        >
+        </Button>
+        <Button variant="ghost" size="icon" className={`p-1.5 w-auto h-auto ${node.type === 'text-block' ? 'text-[var(--color-accent)] bg-[var(--color-accent-tint)]' : 'text-[var(--color-text-secondary)]'}`} onClick={() => onUpdateNode(node.id, { type: 'text-block', backgroundColor: 'transparent', fontFamily: 'var(--font-sans)' })} title="Text Block">
           <Type size={16} />
-        </button>
-        <button 
-          className={`p-1.5 rounded hover:bg-[var(--color-bg-secondary)] ${node.type === 'link-card' ? 'text-[var(--color-accent)] bg-[var(--color-accent-tint)]' : 'text-[var(--color-text-secondary)]'}`}
-          onClick={() => onUpdateNode(node.id, { type: 'link-card' })}
-          title="Link Card"
-        >
+        </Button>
+        <Button variant="ghost" size="icon" className={`p-1.5 w-auto h-auto ${node.type === 'link-card' ? 'text-[var(--color-accent)] bg-[var(--color-accent-tint)]' : 'text-[var(--color-text-secondary)]'}`} onClick={() => onUpdateNode(node.id, { type: 'link-card' })} title="Link Card">
           <LinkIcon size={16} />
-        </button>
-        <button 
-          className={`p-1.5 rounded hover:bg-[var(--color-bg-secondary)] ${node.type === 'image-block' ? 'text-[var(--color-accent)] bg-[var(--color-accent-tint)]' : 'text-[var(--color-text-secondary)]'}`}
-          onClick={() => onUpdateNode(node.id, { type: 'image-block' })}
-          title="Image Block"
-        >
+        </Button>
+        <Button variant="ghost" size="icon" className={`p-1.5 w-auto h-auto ${node.type === 'image-block' ? 'text-[var(--color-accent)] bg-[var(--color-accent-tint)]' : 'text-[var(--color-text-secondary)]'}`} onClick={() => onUpdateNode(node.id, { type: 'image-block' })} title="Image Block">
           <ImageIcon size={16} />
-        </button>
+        </Button>
       </div>
 
       {/* Background Color Picker */}
@@ -75,48 +60,28 @@ export const IconRow = ({
       {/* Font Family */}
       {isTextLike && (
         <div className="flex items-center gap-1 border-r border-[var(--color-border)] pr-2 mr-1">
-          <button 
-            className={`px-2 py-1 text-xs rounded hover:bg-[var(--color-bg-secondary)] ${node.fontFamily === 'var(--font-kalam)' ? 'text-[var(--color-accent)] bg-[var(--color-accent-tint)]' : 'text-[var(--color-text-secondary)]'}`}
-            style={{ fontFamily: 'var(--font-kalam)' }}
-            onClick={() => onUpdateNode(node.id, { fontFamily: 'var(--font-kalam)' })}
-          >
+          <Button variant="ghost" size="sm" className={`px-2 py-1 h-auto text-xs ${node.fontFamily === 'var(--font-kalam)' ? 'text-[var(--color-accent)] bg-[var(--color-accent-tint)]' : 'text-[var(--color-text-secondary)]'}`} style={{ fontFamily: 'var(--font-kalam)' }} onClick={() => onUpdateNode(node.id, { fontFamily: 'var(--font-kalam)' })}>
             Hand
-          </button>
-          <button 
-            className={`px-2 py-1 text-xs rounded hover:bg-[var(--color-bg-secondary)] ${node.fontFamily === 'var(--font-sans)' ? 'text-[var(--color-accent)] bg-[var(--color-accent-tint)]' : 'text-[var(--color-text-secondary)]'}`}
-            style={{ fontFamily: 'var(--font-sans)' }}
-            onClick={() => onUpdateNode(node.id, { fontFamily: 'var(--font-sans)' })}
-          >
+          </Button>
+          <Button variant="ghost" size="sm" className={`px-2 py-1 h-auto text-xs ${node.fontFamily === 'var(--font-sans)' ? 'text-[var(--color-accent)] bg-[var(--color-accent-tint)]' : 'text-[var(--color-text-secondary)]'}`} style={{ fontFamily: 'var(--font-sans)' }} onClick={() => onUpdateNode(node.id, { fontFamily: 'var(--font-sans)' })}>
             Sans
-          </button>
-          <button 
-            className={`px-2 py-1 text-xs rounded hover:bg-[var(--color-bg-secondary)] ${node.fontFamily === 'var(--font-mono)' ? 'text-[var(--color-accent)] bg-[var(--color-accent-tint)]' : 'text-[var(--color-text-secondary)]'}`}
-            style={{ fontFamily: 'var(--font-mono)' }}
-            onClick={() => onUpdateNode(node.id, { fontFamily: 'var(--font-mono)' })}
-          >
+          </Button>
+          <Button variant="ghost" size="sm" className={`px-2 py-1 h-auto text-xs ${node.fontFamily === 'var(--font-mono)' ? 'text-[var(--color-accent)] bg-[var(--color-accent-tint)]' : 'text-[var(--color-text-secondary)]'}`} style={{ fontFamily: 'var(--font-mono)' }} onClick={() => onUpdateNode(node.id, { fontFamily: 'var(--font-mono)' })}>
             Mono
-          </button>
+          </Button>
         </div>
       )}
 
       {/* Pin / Lock */}
-      <button 
-        className={`p-1.5 rounded hover:bg-[var(--color-bg-secondary)] ${node.isLocked ? 'text-[var(--color-accent)] bg-[var(--color-accent-tint)]' : 'text-[var(--color-text-secondary)]'}`}
-        onClick={() => onUpdateNode(node.id, { isLocked: !node.isLocked })}
-        title={node.isLocked ? "Unlock" : "Lock"}
-      >
+      <Button variant="ghost" size="icon" className={`p-1.5 w-auto h-auto ${node.isLocked ? 'text-[var(--color-accent)] bg-[var(--color-accent-tint)]' : 'text-[var(--color-text-secondary)]'}`} onClick={() => onUpdateNode(node.id, { isLocked: !node.isLocked })} title={node.isLocked ? "Unlock" : "Lock"}>
         {node.isLocked ? <Lock size={16} /> : <Unlock size={16} />}
-      </button>
+      </Button>
 
       {/* Collapse / Expand (Text Block only) */}
       {node.type === 'text-block' && node.canCollapse && (
-        <button 
-          className="p-1.5 rounded hover:bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] ml-1"
-          onClick={() => onToggleCollapse(node.id)}
-          title={node.isCollapsed ? "Expand" : "Collapse"}
-        >
+        <Button variant="ghost" size="icon" className="p-1.5 w-auto h-auto text-[var(--color-text-secondary)] ml-1" onClick={() => onToggleCollapse(node.id)} title={node.isCollapsed ? "Expand" : "Collapse"}>
           {node.isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-        </button>
+        </Button>
       )}
     </div>
   );

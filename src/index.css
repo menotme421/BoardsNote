@@ -20,7 +20,6 @@
   --color-border-primary: var(--color-border);
   --color-border-secondary: var(--color-border-secondary);
   --color-brand: var(--brand);
-  /* Design System v2 Tokens */
   --color-page-bg: var(--color-page-bg);
   --color-shell-bg: var(--color-shell-bg);
   --color-sidebar-bg: var(--color-sidebar-bg);
@@ -31,6 +30,25 @@
   --color-accent: var(--color-accent);
   --color-accent-tint: var(--color-accent-tint);
   --color-accent-dark: var(--color-accent-dark);
+  --color-background: oklch(1 0 0);
+  --color-foreground: oklch(0.145 0 0);
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: oklch(0.145 0 0);
+  --color-popover: oklch(1 0 0);
+  --color-popover-foreground: oklch(0.145 0 0);
+  --color-primary: oklch(0.205 0.042 265.755);
+  --color-primary-foreground: oklch(0.985 0 0);
+  --color-secondary: oklch(0.965 0.001 286.375);
+  --color-secondary-foreground: oklch(0.205 0.042 265.755);
+  --color-muted: oklch(0.965 0.001 286.375);
+  --color-muted-foreground: oklch(0.556 0.011 286.375);
+  --color-accent: oklch(0.965 0.001 286.375);
+  --color-accent-foreground: oklch(0.205 0.042 265.755);
+  --color-destructive: oklch(0.577 0.245 27.325);
+  --color-destructive-foreground: oklch(0.577 0.245 27.325);
+  --color-border: oklch(0.922 0.004 286.375);
+  --color-input: oklch(0.922 0.004 286.375);
+  --color-ring: oklch(0.205 0.042 265.755);
   /* Tiny Rounding override */
   --radius-sm: var(--radius-tiny);
   --radius-md: var(--radius-tiny);
@@ -73,6 +91,28 @@
   --color-accent: #ff6127;
   --color-accent-tint: rgba(255, 97, 39, 0.10);
   --color-accent-dark: #cc4d1f;
+
+  /* shadcn/ui CSS Variables (reconciled to BoardsNote palette) */
+  --background: 42 0% 100%;
+  --foreground: 42 5% 16%;
+  --card: 42 0% 100%;
+  --card-foreground: 42 5% 16%;
+  --popover: 42 15% 89%;
+  --popover-foreground: 42 5% 16%;
+  --primary: 16 100% 58%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 42 8% 96%;
+  --secondary-foreground: 42 5% 16%;
+  --muted: 42 8% 91%;
+  --muted-foreground: 42 5% 65%;
+  --accent: 16 100% 58%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 42 12% 81%;
+  --input: 42 12% 81%;
+  --ring: 16 100% 58%;
+  --radius: 0.25rem;
 
   /* Tag Color Palette - 14 colors for sticky notes */
   --tag-red: rgba(239, 68, 68, 0.10);
@@ -126,6 +166,27 @@
   --color-accent: #ff6127;
   --color-accent-tint: rgba(255, 97, 39, 0.12);
   --color-accent-dark: #cc4d1f;
+
+  /* shadcn/ui CSS Variables (dark) */
+  --background: 42 0% 5%;
+  --foreground: 42 7% 77%;
+  --card: 42 11% 7%;
+  --card-foreground: 42 7% 77%;
+  --popover: 42 6% 10%;
+  --popover-foreground: 42 7% 77%;
+  --primary: 16 100% 58%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 42 0% 8%;
+  --secondary-foreground: 42 7% 77%;
+  --muted: 42 0% 11%;
+  --muted-foreground: 42 2% 35%;
+  --accent: 16 100% 58%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 42 4% 16%;
+  --input: 42 4% 16%;
+  --ring: 16 100% 58%;
 
   /* Tag Color Palette - Dark mode (12% opacity) */
   --tag-red: rgba(239, 68, 68, 0.12);
@@ -1174,28 +1235,7 @@ svg.lucide {
   }
 }
 
-/* Properties Panel Headers */
-.properties-header {
-  font-size: 13px;
-  font-family: inherit;
-  font-weight: 600;
-  line-height: 1.4;
-  text-transform: none;
-  color: var(--color-text-primary);
-  margin-bottom: 1.25rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--color-border);
-}
-
-/* Properties Groups */
-.properties-group {
-  margin-bottom: 1rem;
-}
-
-.properties-group:last-child {
-  margin-bottom: 0;
-}
-
+/* Properties Label */
 .properties-label {
   font-size: 11px;
   font-family: inherit;
@@ -1205,232 +1245,6 @@ svg.lucide {
   letter-spacing: 0.03em;
   margin-bottom: 0.5rem;
   display: block;
-}
-
-/* Button Groups (for Type, etc) */
-.button-group {
-  display: flex;
-  gap: 4px;
-  background-color: var(--color-bg-secondary);
-  padding: 3px;
-  border-radius: var(--radius-tiny);
-}
-
-.button-group-item {
-  flex: 1;
-  padding: 6px 4px;
-  border: 1px solid var(--color-border);
-  background-color: transparent;
-  border-radius: var(--radius-tiny);
-  font-size: 10px;
-  font-family: inherit;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  color: var(--color-text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.button-group-item.active {
-  background-color: var(--color-accent-tint);
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-  box-shadow: none;
-}
-
-.button-group-item:hover:not(.active) {
-  background-color: var(--color-bg-secondary);
-  color: var(--color-text-primary);
-  transform: scale(1.05);
-}
-
-.button-group-item:active {
-  transform: scale(0.95);
-}
-
-/* Color Picker */
-.color-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.color-swatch {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 0;
-  position: relative;
-}
-
-.color-swatch:hover {
-  transform: scale(1.1);
-}
-
-.color-swatch:active {
-  transform: scale(0.9);
-}
-
-.color-swatch.active {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px var(--color-editor-bg) inset;
-}
-
-/* Range Slider (Hidden but kept for reference) */
-.range-slider {
-  display: none;
-}
-
-.range-value {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  margin-top: 0.5rem;
-}
-
-/* Text Select */
-.text-select {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-tiny);
-  background-color: var(--color-editor-bg);
-  color: var(--color-text-primary);
-  font-size: 12px;
-  cursor: pointer;
-  font-family: 'DM Sans', sans-serif;
-}
-
-.text-select:hover {
-  border-color: var(--color-text-muted);
-}
-
-.text-select:focus {
-  outline: none;
-  border-color: var(--color-text-primary);
-}
-
-/* Toolbar Styling - Design System v2 */
-.canvas-toolbar {
-  background-color: var(--color-editor-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 16px;
-  padding: 0.5rem;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  z-index: 20;
-}
-
-.toolbar-btn {
-  border-radius: var(--radius-tiny);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  border: none;
-  background: transparent;
-}
-
-.toolbar-btn-primary {
-  width: 40px;
-  height: 40px;
-}
-
-.toolbar-btn-secondary {
-  width: 32px;
-  height: 32px;
-}
-
-.toolbar-btn:hover {
-  background-color: var(--color-surface-hover);
-  color: var(--color-text-primary);
-}
-
-.toolbar-btn:active {
-  transform: scale(0.95);
-}
-
-.toolbar-btn.active {
-  background-color: var(--color-accent-tint);
-  color: var(--color-accent);
-}
-
-.toolbar-divider {
-  width: 1px;
-  height: 24px;
-  background-color: var(--color-border);
-  margin: 0 0.25rem;
-}
-
-/* Toggle Items (Switches) */
-.toggle-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  cursor: pointer;
-  margin-bottom: 0.5rem;
-  font-size: 11px;
-  color: var(--color-text-secondary);
-  font-family: 'DM Mono', monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.toggle-item:last-child {
-  margin-bottom: 0;
-}
-
-.toggle-item input[type="checkbox"] {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 28px;
-  height: 16px;
-  background-color: var(--color-bg-tertiary);
-  border-radius: 100px;
-  position: relative;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid var(--color-border);
-  outline: none;
-}
-
-.toggle-item input[type="checkbox"]:checked {
-  background-color: var(--color-text-primary);
-  border-color: var(--color-text-primary);
-}
-
-.toggle-item input[type="checkbox"]::before {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 10px;
-  height: 10px;
-  background-color: var(--color-bg-primary);
-  border-radius: 50%;
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.toggle-item input[type="checkbox"]:checked::before {
-  transform: translateX(12px);
-  background-color: var(--color-bg-primary);
-}
-
-.toggle-item:hover input[type="checkbox"] {
-  border-color: var(--color-text-secondary);
-}
-
-.toggle-item span {
-  flex: 1;
 }
 
 /* Gutter for the drag handle — gives the handle room to sit left of the content */

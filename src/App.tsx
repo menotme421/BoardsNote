@@ -64,6 +64,16 @@ import {
   Undo, Redo, Tag, Trash2, Edit2, X, CheckSquare,
   Check, CheckCircle2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Columns, Rows, Zap, Navigation, Clipboard, Lock, PanelLeft, PanelTop, Info, Baseline, Highlighter, ZoomIn, ZoomOut, Maximize, Spline
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Separator } from '@/components/ui/separator';
+import { Toggle } from '@/components/ui/toggle';
 
 type FileType = 'note' | 'canvas' | 'folder';
 
@@ -178,7 +188,7 @@ const NoteEditor = ({ file, updateFile, appFontClass, noteMeta, activeMode }: { 
       Color,
       Highlight.configure({ multicolor: true }),
       Placeholder.configure({ placeholder: 'Start typing…' }),
-      Image,
+      Image.configure({ allowBase64: true }),
       Table.extend({
         addKeyboardShortcuts() {
           const parent = this.parent?.() ?? {};
@@ -406,6 +416,69 @@ const NoteEditor = ({ file, updateFile, appFontClass, noteMeta, activeMode }: { 
     }
   }, [editor, file.id, file.content]);
 
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom;
+
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const blob = items[i].getAsFile();
+          if (blob) {
+            e.preventDefault();
+            const reader = new FileReader();
+            reader.onload = () => {
+              const url = reader.result as string;
+              editor.chain().focus().setImage({ src: url }).run();
+            };
+            reader.readAsDataURL(blob);
+            return;
+          }
+        }
+      }
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      const files = e.dataTransfer?.files;
+      if (!files || files.length === 0) return;
+      for (let i = 0; i < files.length; i++) {
+        if (files[i].type.indexOf('image') !== -1) {
+          e.preventDefault();
+          const reader = new FileReader();
+          reader.onload = () => {
+            const url = reader.result as string;
+            const pos = editor.view.posAtCoords({ left: e.clientX, top: e.clientY });
+            if (pos) {
+              editor.chain().focus().setTextSelection(pos.pos).setImage({ src: url }).run();
+            } else {
+              editor.chain().focus().setImage({ src: url }).run();
+            }
+          };
+          reader.readAsDataURL(files[i]);
+          return;
+        }
+      }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+      if (Array.from(e.dataTransfer?.types || []).includes('Files')) {
+        e.preventDefault();
+      }
+    };
+
+    dom.addEventListener('paste', handlePaste);
+    dom.addEventListener('drop', handleDrop);
+    dom.addEventListener('dragover', handleDragOver);
+
+    return () => {
+      dom.removeEventListener('paste', handlePaste);
+      dom.removeEventListener('drop', handleDrop);
+      dom.removeEventListener('dragover', handleDragOver);
+    };
+  }, [editor]);
+
   const runSlashCommand = (id: string) => {
     if (!editor || !slashRange) return;
     const chain = editor.chain().focus().deleteRange(slashRange);
@@ -486,11 +559,11 @@ const NoteEditor = ({ file, updateFile, appFontClass, noteMeta, activeMode }: { 
                 className="flex items-center gap-0.5 px-1 py-0.5 bg-[var(--color-shell-bg)] border border-[var(--color-border)] rounded-[var(--radius-tiny)] shadow-[0_1px_4px_rgba(0,0,0,0.08)]"
                 style={{ height: '28px' }}
               >
-                <button className="p-1 hover:bg-[var(--color-surface-hover)] rounded-[var(--radius-tiny)] text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors" onClick={() => editor.chain().focus().toggleBold().run()}><Bold size={13} /></button>
-                <button className="p-1 hover:bg-[var(--color-surface-hover)] rounded-[var(--radius-tiny)] text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors" onClick={() => editor.chain().focus().toggleItalic().run()}><Italic size={13} /></button>
-                <button className="p-1 hover:bg-[var(--color-surface-hover)] rounded-[var(--radius-tiny)] text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors" onClick={() => editor.chain().focus().toggleStrike().run()}><Strikethrough size={13} /></button>
-                <button className="p-1 hover:bg-[var(--color-surface-hover)] rounded-[var(--radius-tiny)] text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors" onClick={() => editor.chain().focus().toggleUnderline().run()}><Underline size={13} /></button>
-                <button className="p-1 hover:bg-[var(--color-surface-hover)] rounded-[var(--radius-tiny)] text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors" onClick={() => editor.chain().focus().toggleCode().run()}><Code size={13} /></button>
+                <Toggle size="sm" pressed={editor.isActive('bold')} onPressedChange={() => editor.chain().focus().toggleBold().run()}><Bold size={13} /></Toggle>
+                <Toggle size="sm" pressed={editor.isActive('italic')} onPressedChange={() => editor.chain().focus().toggleItalic().run()}><Italic size={13} /></Toggle>
+                <Toggle size="sm" pressed={editor.isActive('strike')} onPressedChange={() => editor.chain().focus().toggleStrike().run()}><Strikethrough size={13} /></Toggle>
+                <Toggle size="sm" pressed={editor.isActive('underline')} onPressedChange={() => editor.chain().focus().toggleUnderline().run()}><Underline size={13} /></Toggle>
+                <Toggle size="sm" pressed={editor.isActive('code')} onPressedChange={() => editor.chain().focus().toggleCode().run()}><Code size={13} /></Toggle>
                 <div className="relative">
                   <button
                     className="p-1 hover:bg-[var(--color-surface-hover)] rounded-[var(--radius-tiny)] text-[var(--color-text-primary)] hover:text-[var(--color-accent)] flex items-center gap-0.5 transition-colors"
@@ -622,8 +695,8 @@ const NoteEditor = ({ file, updateFile, appFontClass, noteMeta, activeMode }: { 
 
       {linkPromptOpen && (
         <div className="fixed z-[10000] bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg p-2 flex gap-2 shadow-xl" style={{ top: slashPosition.top + 12, left: slashPosition.left + 240 }}>
-          <button className="px-2 py-1 text-xs border border-[var(--color-border-secondary)] rounded hover:bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)]" onClick={() => applyLinkMode('inline')}>Inline link</button>
-          <button className="px-2 py-1 text-xs border border-[var(--color-border-secondary)] rounded hover:bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)]" onClick={() => applyLinkMode('embed')}>Embed</button>
+          <Button variant="outline" size="sm" className="text-xs px-2 py-1 h-auto" onClick={() => applyLinkMode('inline')}>Inline link</Button>
+          <Button variant="outline" size="sm" className="text-xs px-2 py-1 h-auto" onClick={() => applyLinkMode('embed')}>Embed</Button>
         </div>
       )}
 
@@ -777,12 +850,9 @@ function getBestAnchors(source: { x: number, y: number, width: number, height: n
 }
 
 const ToolButton = ({ icon, onClick }: { icon: any, onClick: any }) => (
-  <button
-    className="p-1.5 rounded hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-    onClick={onClick}
-  >
+  <Button variant="ghost" size="icon" className="p-1.5 w-auto h-auto" onClick={onClick}>
     {icon}
-  </button>
+  </Button>
 );
 
 const CanvasNode = React.memo(({
@@ -1145,6 +1215,8 @@ const CanvasNode = React.memo(({
 
 const CanvasEditor = ({ file, updateFile, pendingSelect, transform, setTransform }: { file: FileItem, updateFile: any, key?: string, pendingSelect?: any, transform: { x: number, y: number, scale: number }, setTransform: React.Dispatch<React.SetStateAction<{ x: number, y: number, scale: number }>> }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const dragCounterRef = useRef(0);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [tool, setTool] = useState('select');
   const [nodes, setNodes] = useState<any[]>(file.elements?.nodes || []);
   const [edges, setEdges] = useState<any[]>(() => {
@@ -2662,27 +2734,77 @@ const CanvasEditor = ({ file, updateFile, pendingSelect, transform, setTransform
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
+          onDragEnter={(e) => {
+            e.preventDefault();
+            dragCounterRef.current++;
+            setIsDragOver(true);
+          }}
+          onDragLeave={(e) => {
+            dragCounterRef.current--;
+            if (dragCounterRef.current <= 0) {
+              dragCounterRef.current = 0;
+              setIsDragOver(false);
+            }
+          }}
+          onDragOver={(e) => {
+            if (Array.from(e.dataTransfer?.types || []).includes('Files')) {
+              e.preventDefault();
+            }
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            dragCounterRef.current = 0;
+            setIsDragOver(false);
+            const files = e.dataTransfer?.files;
+            if (!files || files.length === 0) return;
+            for (let i = 0; i < files.length; i++) {
+              if (files[i].type.indexOf('image') !== -1) {
+                const blob = URL.createObjectURL(files[i]);
+                const rect = containerRef.current?.getBoundingClientRect();
+                if (!rect) return;
+                const cx = (e.clientX - rect.left - transform.x) / transform.scale;
+                const cy = (e.clientY - rect.top - transform.y) / transform.scale;
+                const id = Math.random().toString(36).substr(2, 9);
+                const maxZ = Math.max(...[...nodes, ...strokes].map(el => el.zIndex || 0), -1);
+                const newNode: any = {
+                  id,
+                  type: 'image-block',
+                  x: cx - 240,
+                  y: cy - 100,
+                  width: 480,
+                  height: 200,
+                  content: blob,
+                  zIndex: maxZ + 1,
+                };
+                setNodes(prev => [...prev, newNode]);
+                setSelectedNodeId(id);
+                setTool('select');
+                break;
+              }
+            }
+          }}
         >
           {contextMenu && (
             <div
-              className="absolute bg-[var(--color-bg-secondary)] border border-[var(--color-border)] shadow-xl rounded py-1 z-50 flex flex-col min-w-[120px] animate-in fade-in"
+              className="fixed z-50"
               style={{ left: contextMenu.x, top: contextMenu.y }}
               onPointerDown={e => e.stopPropagation()}
             >
-              <button
-                className="px-4 py-2 text-sm text-[var(--color-text-primary)] text-left hover:bg-[var(--color-bg-tertiary)] flex items-center gap-2"
-                onClick={() => {
-                  if (containerRef.current) {
-                    const rect = containerRef.current.getBoundingClientRect();
-                    const x = (contextMenu.x - rect.left - transform.x) / transform.scale;
-                    const y = (contextMenu.y - rect.top - transform.y) / transform.scale;
-                    performPasteFromClipboard(x, y);
-                  }
-                  setContextMenu(null);
-                }}
-              >
-                <Clipboard size={14} /> Paste
-              </button>
+              <DropdownMenu open={true} onOpenChange={() => setContextMenu(null)}>
+                <DropdownMenuContent align="start" side="bottom" className="min-w-[120px]" onCloseAutoFocus={(e) => e.preventDefault()}>
+                  <DropdownMenuItem onClick={() => {
+                    if (containerRef.current) {
+                      const rect = containerRef.current.getBoundingClientRect();
+                      const x = (contextMenu.x - rect.left - transform.x) / transform.scale;
+                      const y = (contextMenu.y - rect.top - transform.y) / transform.scale;
+                      performPasteFromClipboard(x, y);
+                    }
+                    setContextMenu(null);
+                  }}>
+                    <Clipboard size={14} /> Paste
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
 
@@ -2701,6 +2823,14 @@ const CanvasEditor = ({ file, updateFile, pendingSelect, transform, setTransform
               backgroundPosition: `${transform.x}px ${transform.y}px`
             }}
           />
+
+          {isDragOver && (
+            <div className="absolute inset-0 z-50 bg-blue-500/10 border-2 border-blue-500 border-dashed rounded-lg pointer-events-none flex items-center justify-center">
+              <span className="bg-[var(--color-bg-primary)] text-blue-500 px-4 py-2 rounded-lg shadow-lg text-sm font-medium">
+                Drop image here
+              </span>
+            </div>
+          )}
 
           {selectedStrokeId && tool === 'select' && (() => {
             const stroke = strokes.find(s => s.id === selectedStrokeId);
@@ -2721,8 +2851,10 @@ const CanvasEditor = ({ file, updateFile, pendingSelect, transform, setTransform
                   className="absolute bottom-12 right-4 flex flex-col gap-1 z-20"
                   onPointerDown={(e) => e.stopPropagation()}
                 >
-                  <button
-                    className="p-1.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] shadow-lg"
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="p-1.5 w-auto h-auto shadow-lg"
                     onClick={(e) => {
                       e.stopPropagation();
                       const maxZ = Math.max(...strokes.map(s => s.zIndex || 0), -1);
@@ -2731,9 +2863,11 @@ const CanvasEditor = ({ file, updateFile, pendingSelect, transform, setTransform
                     title="Bring to Front"
                   >
                     <ArrowUp size={14} />
-                  </button>
-                  <button
-                    className="p-1.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] shadow-lg"
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="p-1.5 w-auto h-auto shadow-lg"
                     onClick={(e) => {
                       e.stopPropagation();
                       const minZ = Math.min(...strokes.map(s => s.zIndex || 0), 1);
@@ -2742,9 +2876,11 @@ const CanvasEditor = ({ file, updateFile, pendingSelect, transform, setTransform
                     title="Send to Back"
                   >
                     <ArrowDown size={14} />
-                  </button>
-                  <button
-                    className="p-1.5 bg-[var(--color-bg-secondary)] border border-red-500/30 rounded hover:bg-red-500/20 text-red-500 shadow-lg mt-1"
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="p-1.5 w-auto h-auto shadow-lg mt-1 border-red-500/30 hover:bg-red-500/20 text-red-500 hover:text-red-500"
                     onClick={(e) => {
                       e.stopPropagation();
                       setStrokes(strokes.filter(s => s.id !== selectedStrokeId));
@@ -2753,7 +2889,7 @@ const CanvasEditor = ({ file, updateFile, pendingSelect, transform, setTransform
                     title="Delete Stroke"
                   >
                     <Trash2 size={14} />
-                  </button>
+                  </Button>
                 </div>
               </>
             );
@@ -3110,13 +3246,14 @@ const CanvasEditor = ({ file, updateFile, pendingSelect, transform, setTransform
         </div>
 
         {isOutOfView && (
-          <button
+          <Button
             onClick={handleGoBackToContent}
-            className="absolute top-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded-full shadow-lg font-mono text-xs flex items-center gap-2 hover:bg-[var(--color-bg-tertiary)] transition-all duration-200 animate-in fade-in slide-in-from-top-4"
+            variant="secondary"
+            className="absolute top-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full shadow-lg font-mono text-xs gap-2 animate-in fade-in slide-in-from-top-4"
           >
             <Navigation size={14} />
             Go back to content
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -3124,12 +3261,14 @@ const CanvasEditor = ({ file, updateFile, pendingSelect, transform, setTransform
 };
 
 const CanvasTool = ({ icon, active, onClick }: { icon: any, active: boolean, onClick: any }) => (
-  <button
-    className={`p-1.5 rounded transition-colors ${active ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-primary)]' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'}`}
+  <Button
+    variant={active ? 'default' : 'ghost'}
+    size="icon"
+    className={`p-1.5 w-auto h-auto ${active ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-primary)] hover:bg-[var(--color-text-primary)]' : ''}`}
     onClick={onClick}
   >
     {icon}
-  </button>
+  </Button>
 );
 
 const SHORTCUTS = [
@@ -3156,30 +3295,29 @@ const SettingsPage = ({ appFontClass, onAppFontChange, onClose }: { appFontClass
   return (
     <div className="flex flex-col h-full bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] overflow-y-auto">
       <div className="max-w-3xl mx-auto w-full p-8 md:p-12">
-        <button
-          onClick={onClose}
-          className="flex items-center gap-1.5 text-[13px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors mb-6"
-        >
+        <Button variant="link" onClick={onClose} className="flex items-center gap-1.5 text-[13px] mb-6 px-0 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">
           <ArrowLeft size={16} />
           Back to Home
-        </button>
+        </Button>
         <h1 className="text-4xl font-semibold mb-2">Settings</h1>
         <p className="text-[var(--color-text-secondary)] mb-8">Manage your preferences and integrations.</p>
 
         {/* Tabs */}
         <div className="flex gap-4 border-b border-[var(--color-border)] mb-8">
-          <button
-            className={`pb-2 px-1 text-[13px] font-medium transition-colors border-b-2 ${activeTab === 'preferences' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'}`}
+          <Button
+            variant="link"
+            className={`pb-2 px-1 text-[13px] font-medium border-b-2 rounded-none ${activeTab === 'preferences' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:no-underline'}`}
             onClick={() => setActiveTab('preferences')}
           >
             Preferences (early access)
-          </button>
-          <button
-            className={`pb-2 px-1 text-[13px] font-medium transition-colors border-b-2 ${activeTab === 'shortcuts' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'}`}
+          </Button>
+          <Button
+            variant="link"
+            className={`pb-2 px-1 text-[13px] font-medium border-b-2 rounded-none ${activeTab === 'shortcuts' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:no-underline'}`}
             onClick={() => setActiveTab('shortcuts')}
           >
             Keyboard Shortcuts
-          </button>
+          </Button>
         </div>
 
         <div className="space-y-12">
@@ -3198,18 +3336,15 @@ const SettingsPage = ({ appFontClass, onAppFontChange, onClose }: { appFontClass
                   {FONT_OPTIONS.map((font) => {
                     const isActive = appFontClass === font.value;
                     return (
-                      <button
+                      <Button
                         key={font.value}
-                        type="button"
+                        variant={isActive ? 'default' : 'outline'}
+                        className={`text-left px-3 py-2 h-auto flex-col items-start justify-start gap-0 ${isActive ? 'border-[var(--brand)] bg-[var(--brand-subtle)] text-[var(--color-text-primary)] hover:bg-[var(--brand-subtle)]' : ''}`}
                         onClick={() => onAppFontChange(font.value)}
-                        className={`text-left px-3 py-2 rounded-md border transition-colors ${isActive
-                            ? 'border-[var(--brand)] bg-[var(--brand-subtle)]'
-                            : 'border-[var(--color-border)] bg-[var(--color-bg-primary)] hover:border-[var(--color-border-secondary)]'
-                          }`}
                       >
                         <div className={`text-[13px] font-medium ${font.value}`}>{font.name}</div>
                         <div className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">{font.label}</div>
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
@@ -3227,13 +3362,13 @@ const SettingsPage = ({ appFontClass, onAppFontChange, onClose }: { appFontClass
                 </div>
 
                 <div className="relative w-full sm:w-64">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
-                  <input
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] z-10" />
+                  <Input
                     type="text"
                     placeholder="Search shortcuts..."
                     value={shortcutSearch}
                     onChange={(e) => setShortcutSearch(e.target.value)}
-                    className="w-full bg-[var(--color-shell-bg)] border border-[var(--color-border)] rounded-full pl-9 pr-4 py-1.5 text-sm outline-none focus:border-[var(--color-accent)] transition-colors"
+                    className="w-full rounded-full pl-9 pr-4 py-1.5 text-sm"
                   />
                 </div>
               </div>
@@ -3377,12 +3512,13 @@ const PropertiesPanel = ({
 
   return (
     <div ref={panelRef} className="relative">
-      <button
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={() => setIsOpen(!isOpen)}
-        className="p-2 rounded-[var(--radius-tiny)] flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)] transition-colors"
       >
         <Info size={16} />
-      </button>
+      </Button>
       {isOpen && (
         <div
           className="absolute right-0 top-full mt-1 w-[260px] max-h-[260px] flex flex-col bg-[var(--color-editor-bg)] border border-[var(--color-border)] rounded-[var(--radius-tiny)] overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.08)] z-50"
@@ -3423,15 +3559,16 @@ const PropertiesPanel = ({
                   const isExpanded = expandedCards[idx];
                   return (
                     <div key={idx}>
-                      <button
-                        className="w-full flex items-center justify-between text-left hover:opacity-80 transition-opacity py-1"
+                      <Button
+                        variant="ghost"
+                        className="w-full flex items-center justify-between text-left py-1 h-auto"
                         onClick={() => toggleCard(idx)}
                       >
                         <span className="text-[13px] text-[var(--color-text-primary)]">{card.label}</span>
                         <span className={`text-[var(--color-text-muted)] transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>
                           ›
                         </span>
-                      </button>
+                      </Button>
                       {isExpanded && (
                         <div className="pb-1 pl-2">
                           {card.steps.map((step, stepIdx) => (
@@ -3565,17 +3702,6 @@ export default function App() {
   }, [activeFileId]);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('.file-menu-dropdown')) {
-        setOpenFileMenuId(null);
-      }
-    };
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
@@ -3706,9 +3832,9 @@ export default function App() {
                   {f.type === 'folder' ? (f.isOpen ? <ChevronRight size={14} className="rotate-90" /> : <ChevronRight size={14} />) : f.type === 'note' ? <FileText size={14} /> : <LayoutGrid size={14} />}
                 </span>
                 {editingFileId === f.id ? (
-                  <input
+                  <Input
                     autoFocus
-                    className="flex-1 bg-transparent border-b border-[var(--color-border)] outline-none text-sm text-[var(--color-text-primary)] min-w-0"
+                    className="flex-1 h-auto border-b border-[var(--color-border)] bg-transparent outline-none text-sm text-[var(--color-text-primary)] min-w-0 rounded-none px-0 py-0"
                     value={editingTitle}
                     onChange={e => setEditingTitle(e.target.value)}
                     onBlur={() => {
@@ -3733,27 +3859,15 @@ export default function App() {
               <div className="hidden group-hover:flex items-center gap-1 shrink-0 ml-2">
                 {!isSelectionMode && (
                   <>
-                    <button
-                      className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-border)] rounded"
-                      onClick={(e) => { e.stopPropagation(); setEditingFileId(f.id); setEditingTitle(f.title); }}
-                      title="Rename"
-                    >
+                    <Button variant="ghost" size="icon" className="p-1 w-auto h-auto text-[var(--color-text-muted)]" onClick={(e) => { e.stopPropagation(); setEditingFileId(f.id); setEditingTitle(f.title); }} title="Rename">
                       <Edit2 size={12} />
-                    </button>
-                    <button
-                      className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-border)] rounded"
-                      onClick={(e) => { e.stopPropagation(); setTaggingFileId(taggingFileId === f.id ? null : f.id); setNewTag(''); }}
-                      title="Tags"
-                    >
+                    </Button>
+                    <Button variant="ghost" size="icon" className="p-1 w-auto h-auto text-[var(--color-text-muted)]" onClick={(e) => { e.stopPropagation(); setTaggingFileId(taggingFileId === f.id ? null : f.id); setNewTag(''); }} title="Tags">
                       <Tag size={12} />
-                    </button>
-                    <button
-                      className="p-1 text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded"
-                      onClick={(e) => { e.stopPropagation(); setFilesToDelete([f]); }}
-                      title="Delete"
-                    >
+                    </Button>
+                    <Button variant="ghost" size="icon" className="p-1 w-auto h-auto text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10" onClick={(e) => { e.stopPropagation(); setFilesToDelete([f]); }} title="Delete">
                       <Trash2 size={12} />
-                    </button>
+                    </Button>
                   </>
                 )}
               </div>
@@ -3879,91 +3993,32 @@ export default function App() {
     return items;
   }, [activeFile, files]);
 
-  const FileMenuDropdown = ({ file, buttonRef }: { file: FileItem, buttonRef: React.RefObject<HTMLButtonElement | null> }) => {
-    const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
-    const isMounted = useRef(false);
-
-    useEffect(() => {
-      const handleScroll = () => {
-        setOpenFileMenuId(null);
-      };
-      window.addEventListener('scroll', handleScroll, true);
-      return () => window.removeEventListener('scroll', handleScroll, true);
-    }, []);
-
-    useEffect(() => {
-      isMounted.current = true;
-      const updatePosition = () => {
-        if (buttonRef.current && isMounted.current) {
-          const rect = buttonRef.current.getBoundingClientRect();
-          const dropdownWidth = 144; // w-36 = 9rem = 144px
-          const dropdownHeight = 120; // Approximate height
-          const padding = 8;
-
-          // Position dropdown below and aligned to right edge of button
-          let left = rect.right - dropdownWidth;
-          let top = rect.bottom + padding;
-
-          // Ensure dropdown stays within viewport
-          if (left < padding) left = padding;
-          if (left + dropdownWidth > window.innerWidth - padding) {
-            left = rect.left;
-          }
-          if (top + dropdownHeight > window.innerHeight - padding) {
-            top = rect.top - dropdownHeight - padding;
-          }
-
-          setPosition({ top, left });
-        }
-      };
-      // Small delay to ensure button is rendered
-      const timer = setTimeout(updatePosition, 0);
-      window.addEventListener('scroll', updatePosition, true);
-      window.addEventListener('resize', updatePosition);
-      return () => {
-        isMounted.current = false;
-        clearTimeout(timer);
-        window.removeEventListener('scroll', updatePosition, true);
-        window.removeEventListener('resize', updatePosition);
-      };
-    }, [buttonRef]);
-
-    if (!position) return null;
-
-    return createPortal(
-      <div
-        className="file-menu-dropdown fixed z-[100] w-36 bg-[var(--color-shell-bg)] border border-[var(--color-border)] rounded-lg shadow-xl py-1"
-        style={{ top: position?.top ?? 0, left: position?.left ?? 0 }}
-      >
-        <button
-          className="w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 hover:bg-[var(--color-surface-hover)] transition-colors"
-          onClick={(e) => { e.stopPropagation(); updateFile(file.id, { isPinned: !file.isPinned }); setOpenFileMenuId(null); }}
-        >
-          <Star size={12} className={file.isPinned ? 'text-amber-500 fill-current' : 'text-[var(--color-text-muted)]'} />
-          <span className="text-[var(--color-text-primary)]">{file.isPinned ? 'Unfavourite' : 'Favourite'}</span>
-        </button>
-        <button
-          className="w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 hover:bg-[var(--color-surface-hover)] transition-colors"
-          onClick={(e) => { e.stopPropagation(); setEditingFileId(file.id); setEditingTitle(file.title); setOpenFileMenuId(null); }}
-        >
-          <Edit2 size={12} className="text-[var(--color-text-muted)]" />
-          <span className="text-[var(--color-text-primary)]">Rename</span>
-        </button>
-        <button
-          className="w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 hover:bg-red-500/10 transition-colors"
-          onClick={(e) => { e.stopPropagation(); setFilesToDelete([file]); setOpenFileMenuId(null); }}
-        >
-          <Trash2 size={12} className="text-red-500" />
-          <span className="text-red-500">Delete</span>
-        </button>
-      </div>,
-      document.body
+  const FileMenuDropdown = ({ file, children, open, onOpenChange }: { file: FileItem, children: React.ReactNode, open: boolean, onOpenChange: (open: boolean) => void }) => {
+    return (
+      <DropdownMenu open={open} onOpenChange={onOpenChange}>
+        <DropdownMenuTrigger asChild>
+          {children}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" side="bottom" className="w-36 min-w-0">
+          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); updateFile(file.id, { isPinned: !file.isPinned }); onOpenChange(false); }}>
+            <Star size={12} className={file.isPinned ? 'text-amber-500 fill-current' : ''} />
+            {file.isPinned ? 'Unfavourite' : 'Favourite'}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditingFileId(file.id); setEditingTitle(file.title); onOpenChange(false); }}>
+            <Edit2 size={12} />
+            Rename
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="text-red-500 focus:text-red-500 focus:bg-red-500/10" onClick={(e) => { e.stopPropagation(); setFilesToDelete([file]); onOpenChange(false); }}>
+            <Trash2 size={12} />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   };
 
   const SidebarFileItem = ({ f }: { f: FileItem }) => {
-    const menuButtonRef = useRef<HTMLButtonElement>(null);
-
     return (
       <div key={f.id}>
         <div
@@ -3983,9 +4038,9 @@ export default function App() {
                 {f.type === 'note' ? <FileText size={14} /> : <LayoutGrid size={14} />}
               </span>
               {editingFileId === f.id ? (
-                <input
+                <Input
                   autoFocus
-                  className="flex-1 bg-transparent border-b border-[var(--color-border)] outline-none text-sm text-[var(--color-text-primary)] min-w-0"
+                  className="flex-1 h-auto border-b border-[var(--color-border)] bg-transparent outline-none text-sm text-[var(--color-text-primary)] min-w-0 rounded-none px-0 py-0"
                   value={editingTitle}
                   onChange={e => setEditingTitle(e.target.value)}
                   onBlur={() => {
@@ -4012,15 +4067,17 @@ export default function App() {
             </div>
 
             <div className="hidden group-hover:flex items-center gap-1 shrink-0 ml-2">
-              <button
-                ref={menuButtonRef}
-                className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-border)] rounded"
-                onClick={(e) => { e.stopPropagation(); setOpenFileMenuId(openFileMenuId === f.id ? null : f.id); }}
-                title="More options"
-              >
-                <MoreVertical size={12} />
-              </button>
-              {openFileMenuId === f.id && <FileMenuDropdown file={f} buttonRef={menuButtonRef} />}
+              <FileMenuDropdown file={f} open={openFileMenuId === f.id} onOpenChange={(open) => setOpenFileMenuId(open ? f.id : null)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="p-1 w-auto h-auto text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                  onClick={(e) => e.stopPropagation()}
+                  title="More options"
+                >
+                  <MoreVertical size={12} />
+                </Button>
+              </FileMenuDropdown>
             </div>
           </div>
         </div>
@@ -4041,15 +4098,16 @@ export default function App() {
         }`}
       >
         {/* Home row */}
-        <div
-          className="flex items-center px-3 py-2 gap-2 cursor-pointer rounded-[var(--radius-tiny)] hover:bg-[var(--color-bg-tertiary)] transition-colors shrink-0 mx-2 mt-3"
+        <Button
+          variant="ghost"
+          className="justify-start px-3 py-2 gap-2 shrink-0 mx-2 mt-3 font-semibold text-[13px]"
           onClick={() => { setActiveFileId(null); setShowSettings(false); }}
         >
-          <ArrowLeft size={16} className="text-[var(--color-text-primary)]" strokeWidth={2} />
-          <span className="text-[13px] font-semibold text-[var(--color-text-primary)]">Home</span>
-        </div>
+          <ArrowLeft size={16} strokeWidth={2} />
+          Home
+        </Button>
 
-        <div className="border-b border-[var(--color-border)] mx-2 mt-3 mb-1" />
+        <Separator className="mx-2 mt-3 mb-1" />
 
         {/* File List */}
         <div className="flex-grow overflow-y-auto p-2">
@@ -4060,32 +4118,31 @@ export default function App() {
             .map(renderSidebarFileItem)}
 
           {/* New file row */}
-          <div
-            className="flex items-center px-2 py-1.5 gap-2 cursor-pointer rounded hover:bg-[var(--color-surface-hover)] transition-colors mt-1"
-            onClick={createActiveModeFile}
-          >
-            <Plus size={14} className="text-[var(--brand)]" />
-            <span className="text-[13px] text-[var(--brand)]">New {activeMode === 'notes' ? 'Note' : 'Board'}</span>
-          </div>
+          <Button variant="ghost" className="justify-start px-2 py-1.5 gap-2 mt-1 w-full text-[13px] text-[var(--brand)]" onClick={createActiveModeFile}>
+            <Plus size={14} />
+            New {activeMode === 'notes' ? 'Note' : 'Board'}
+          </Button>
         </div>
 
         {/* Footer */}
         <div className="border-t border-[var(--color-border)] px-2 pt-2 pb-4 flex items-center gap-0.5 shrink-0">
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-2 hover:bg-[var(--color-bg-tertiary)] rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors"
             title="Toggle Theme"
           >
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
+          </Button>
 
-          <button
-            className={`p-2 rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors ${showSettings ? 'bg-[var(--color-bg-tertiary)]' : 'hover:bg-[var(--color-bg-tertiary)]'}`}
+          <Button
+            variant={showSettings ? 'secondary' : 'ghost'}
+            size="icon"
             onClick={() => setShowSettings(true)}
             title="Settings"
           >
             <Settings size={16} />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -4099,15 +4156,16 @@ export default function App() {
           <div className="h-full flex flex-col animate-in fade-in duration-200" key={activeFile.id}>
             {/* Shared Editor Topbar */}
             <div className="h-12 border-b border-[var(--color-border)] flex items-center px-3 shrink-0 z-10 bg-[var(--color-editor-bg)]">
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setSidebarOpen(prev => !prev)}
-                className="p-2 hover:bg-[var(--color-bg-tertiary)] rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors"
                 title="Toggle Sidebar"
               >
                 <PanelLeft size={18} />
-              </button>
-              <input
-                className="bg-transparent text-base font-semibold outline-none ml-2 flex-1 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
+              </Button>
+              <Input
+                className="bg-transparent text-base font-semibold border-none outline-none ml-2 flex-1 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] shadow-none h-auto px-0"
                 value={activeFile.title}
                 placeholder="Untitled"
                 onChange={(e) => updateFile(activeFile.id, { title: e.target.value })}
@@ -4115,19 +4173,19 @@ export default function App() {
               <div className="ml-auto flex items-center gap-0.5">
                 {activeFile.type === 'canvas' && (
                   <>
-                    <button className="toolbar-btn toolbar-btn-secondary" onClick={() => setCanvasTransform(p => ({ ...p, scale: Math.max(p.scale / 1.01, 0.1) }))} title="Zoom Out (Ctrl+-)">
+                    <Button variant="ghost" size="icon" onClick={() => setCanvasTransform(p => ({ ...p, scale: Math.max(p.scale / 1.01, 0.1) }))} title="Zoom Out (Ctrl+-)">
                       <ZoomOut size={16} />
-                    </button>
+                    </Button>
                     <span
                       className="font-mono min-w-[36px] text-center text-[13px] text-[var(--color-text-secondary)] cursor-pointer hover:text-[var(--color-text-primary)]"
                       onDoubleClick={() => setCanvasTransform(prev => ({ ...prev, scale: 1 }))}
                     >{Math.round(canvasTransform.scale * 100)}%</span>
-                    <button className="toolbar-btn toolbar-btn-secondary" onClick={() => setCanvasTransform(p => ({ ...p, scale: Math.min(p.scale * 1.01, 5) }))} title="Zoom In (Ctrl++)">
+                    <Button variant="ghost" size="icon" onClick={() => setCanvasTransform(p => ({ ...p, scale: Math.min(p.scale * 1.01, 5) }))} title="Zoom In (Ctrl++)">
                       <ZoomIn size={16} />
-                    </button>
-                    <button className="toolbar-btn toolbar-btn-secondary" onClick={() => setCanvasTransform({ x: 0, y: 0, scale: 1 })} title="Reset zoom to 100%">
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => setCanvasTransform({ x: 0, y: 0, scale: 1 })} title="Reset zoom to 100%">
                       <Maximize size={16} />
-                    </button>
+                    </Button>
                   </>
                 )}
                 {activeFile.type === 'note' && <PropertiesPanel noteMeta={noteMeta} activeMode={activeMode} />}
@@ -4177,33 +4235,25 @@ export default function App() {
       />
 
       {/* Delete Confirmation Modal */}
-      {filesToDelete && filesToDelete.length > 0 && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[var(--color-shell-bg)] border border-[var(--color-border)] rounded-lg shadow-xl p-4 w-80">
-            <h3 className="font-inter text-lg mb-2 text-[var(--color-text-primary)]">Delete {filesToDelete.length > 1 ? 'Files' : 'File'}</h3>
-            <p className="text-sm text-[var(--color-text-muted)] mb-4">
-              Are you sure you want to delete {filesToDelete.length > 1 ? `${filesToDelete.length} files` : `"${filesToDelete[0].title}"`}? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                className="px-3 py-1.5 text-sm text-[var(--color-text-primary)] rounded hover:bg-[var(--color-surface-hover)] transition-colors"
-                onClick={() => setFilesToDelete(null)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-3 py-1.5 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-                onClick={() => {
-                  deleteFiles(filesToDelete.map(f => f.id));
-                  setFilesToDelete(null);
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={!!filesToDelete} onOpenChange={(open) => { if (!open) setFilesToDelete(null); }}>
+        <DialogContent className="sm:max-w-[360px]">
+          <DialogHeader>
+            <DialogTitle>Delete {filesToDelete && filesToDelete.length > 1 ? 'Files' : 'File'}</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {filesToDelete && filesToDelete.length > 1 ? `${filesToDelete.length} files` : filesToDelete ? `"${filesToDelete[0].title}"` : ''}? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setFilesToDelete(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => {
+              if (filesToDelete) {
+                deleteFiles(filesToDelete.map(f => f.id));
+                setFilesToDelete(null);
+              }
+            }}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

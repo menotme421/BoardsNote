@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
@@ -101,8 +102,10 @@ export const TextBlock = ({ node, isEditing, onContentChange, onEditChange, onTo
       )}
       
       {node.canCollapse && !isEditing && (
-        <button
-          className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-full px-3 py-1 text-xs flex items-center gap-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity z-10"
+        <Button
+          variant="secondary"
+          size="sm"
+          className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs gap-1 shadow-sm opacity-0 group-hover:opacity-100 z-10"
           onClick={(e) => {
             e.stopPropagation();
             onToggleCollapse(node.id);
@@ -113,7 +116,7 @@ export const TextBlock = ({ node, isEditing, onContentChange, onEditChange, onTo
           ) : (
             <>Collapse <ChevronUp size={14} /></>
           )}
-        </button>
+        </Button>
       )}
     </div>
   );

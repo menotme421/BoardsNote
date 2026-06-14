@@ -1,8 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Search, Sun, Moon, Settings, LayoutGrid, Star, MoreVertical, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Search, Sun, Moon, Settings, Star, Edit2, Trash2, MoreVertical } from 'lucide-react';
 import type { FileItem } from '../App';
 import boardsNoteLogo from '../assets/BoardsNote_favicon_logo.svg';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface BrowserProps {
   files: FileItem[];
@@ -36,16 +48,11 @@ function formatRelativeTime(ts: number): string {
   return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-const DROPDOWN_WIDTH = 144;
-const DROPDOWN_HEIGHT = 120;
-const PADDING = 8;
-
 export function Browser({
   files, activeMode, onModeChange, theme, onThemeToggle,
   onOpenSettings, onOpenSearch, onFileSelect, onCreateFile, onCreateFileOfType,
   onRenameFile, onTogglePin, onDeleteFile
 }: BrowserProps) {
-  const [menuAnchor, setMenuAnchor] = useState<{ id: string; top: number; left: number } | null>(null);
   const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
   const [renamingTitle, setRenamingTitle] = useState('');
   const renamingRef = useRef<string | null>(null);
@@ -66,97 +73,9 @@ export function Browser({
     }
   };
 
-  const renderCard = (file: FileItem) => {
-    const isRenaming = renamingFileId === file.id;
-    return (
-      <div
-        key={file.id}
-        className="relative flex flex-col p-4 bg-[var(--color-bg-primary)] border border-[var(--color-border-secondary)] rounded-[var(--radius-tiny)] shadow-sm hover:shadow-md hover:border-[var(--color-border)] transition-all cursor-pointer group"
-        onClick={(e) => {
-          if (renamingFileId !== null) return;
-          const target = e.target as HTMLElement;
-          if (target.closest('.card-menu-button') || target.closest('.file-menu-dropdown')) return;
-          onFileSelect(file.id);
-        }}
-      >
-        {file.isPinned && (
-          <div className="flex items-center gap-1 mb-1">
-            <Star size={12} className="text-amber-500 fill-current" />
-            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium uppercase tracking-wider">Pinned</span>
-          </div>
-        )}
-        <div className="flex items-center justify-between gap-2 mb-1">
-          {isRenaming ? (
-            <input
-              autoFocus
-              className="flex-1 bg-transparent border-b border-[var(--color-border)] outline-none text-sm text-[var(--color-text-primary)] min-w-0"
-              value={renamingTitle}
-              onChange={e => setRenamingTitle(e.target.value)}
-              onBlur={() => handleRenameEnd(file.id)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleRenameEnd(file.id);
-                } else if (e.key === 'Escape') {
-                  e.stopPropagation();
-                  setRenamingFileId(null);
-                }
-              }}
-              onClick={e => e.stopPropagation()}
-            />
-          ) : (
-            <h3 className="text-base font-semibold text-[var(--color-text-primary)] truncate leading-relaxed">{file.title || 'Untitled'}</h3>
-          )}
-          {!isRenaming && (
-            <button
-              className="card-menu-button p-1 shrink-0 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] rounded opacity-0 group-hover:opacity-100 transition-all"
-              onClick={(e) => handleMenuOpen(e, file.id)}
-            >
-              <MoreVertical size={14} />
-            </button>
-          )}
-        </div>
-        {!isRenaming && (
-          <p className="text-xs text-[var(--color-text-secondary)] line-clamp-3 leading-relaxed mb-3">
-            {file.type === 'note'
-              ? stripHtml(file.content || '').substring(0, 200)
-              : `${file.elements?.nodes?.length || 0} nodes · ${file.elements?.strokes?.length || 0} strokes`
-            }
-          </p>
-        )}
-        {!isRenaming && (
-          <div className="flex items-center gap-2 mt-auto text-[11px] text-[var(--color-text-muted)]">
-            <span className={`w-2 h-2 rounded-full ${file.type === 'note' ? 'bg-[var(--color-note)]' : 'bg-[var(--color-canvas)]'}`} />
-            <span>{formatRelativeTime(file.updatedAt)}</span>
-            {file.tags && file.tags.length > 0 && <span className="truncate">· {file.tags.slice(0, 2).join(', ')}</span>}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const handleMenuOpen = (e: React.MouseEvent, fileId: string) => {
-    e.stopPropagation();
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    let left = rect.right - DROPDOWN_WIDTH;
-    let top = rect.bottom + PADDING;
-
-    if (left < PADDING) left = PADDING;
-    if (left + DROPDOWN_WIDTH > window.innerWidth - PADDING) {
-      left = rect.left;
-    }
-    if (top + DROPDOWN_HEIGHT > window.innerHeight - PADDING) {
-      top = rect.top - DROPDOWN_HEIGHT - PADDING;
-    }
-
-    setMenuAnchor(prev => prev?.id === fileId ? null : { id: fileId, top, left });
-  };
-
   const handleRenameStart = (file: FileItem) => {
     setRenamingFileId(file.id);
     setRenamingTitle(file.title);
-    setMenuAnchor(null);
   };
 
   const handleRenameEnd = (id: string) => {
@@ -168,18 +87,109 @@ export function Browser({
   };
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('.file-menu-dropdown') && !target.closest('.card-menu-button')) {
-        setMenuAnchor(null);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'n' && !e.metaKey && !e.ctrlKey && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
+        onCreateFile();
+      }
+      if (e.key === 'c' && !e.metaKey && !e.ctrlKey && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
+        handleSecondaryAction();
       }
     };
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const currentMenuFile = menuAnchor ? files.find(f => f.id === menuAnchor.id) : undefined;
-  const anchorId = menuAnchor?.id;
+  const renderCard = (file: FileItem) => {
+    const isRenaming = renamingFileId === file.id;
+    return (
+      <Card
+        key={file.id}
+        className="group cursor-pointer hover:shadow-md hover:border-[var(--color-border)] transition-all overflow-hidden"
+        onClick={(e) => {
+          if (renamingFileId !== null) return;
+          const target = e.target as HTMLElement;
+          if (target.closest('.card-menu-button') || target.closest('[data-radix-dropdown-menu-content]')) return;
+          onFileSelect(file.id);
+        }}
+      >
+        {file.isPinned && (
+          <div className="flex items-center gap-1 px-4 pt-4 pb-0">
+            <Star size={12} className="text-amber-500 fill-current" />
+            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium uppercase tracking-wider">Pinned</span>
+          </div>
+        )}
+        <CardContent className={file.isPinned ? 'pt-2' : 'pt-4'}>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            {isRenaming ? (
+              <Input
+                autoFocus
+                className="h-7 text-sm px-1 py-0 border-b border-[var(--color-border)] rounded-none bg-transparent focus-visible:border-[var(--color-text-primary)]"
+                value={renamingTitle}
+                onChange={e => setRenamingTitle(e.target.value)}
+                onBlur={() => handleRenameEnd(file.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleRenameEnd(file.id);
+                  } else if (e.key === 'Escape') {
+                    e.stopPropagation();
+                    setRenamingFileId(null);
+                  }
+                }}
+                onClick={e => e.stopPropagation()}
+              />
+            ) : (
+              <h3 className="text-base font-semibold text-[var(--color-text-primary)] truncate leading-relaxed flex-1 min-w-0">{file.title || 'Untitled'}</h3>
+            )}
+            {!isRenaming && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon-sm" className="card-menu-button opacity-0 group-hover:opacity-100 shrink-0">
+                    <MoreVertical size={14} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-36">
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onTogglePin?.(file.id); }}>
+                    <Star size={12} className={file.isPinned ? 'text-amber-500 fill-current' : ''} />
+                    {file.isPinned ? 'Unfavourite' : 'Favourite'}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRenameStart(file); }}>
+                    <Edit2 size={12} />
+                    Rename
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-red-500 focus:text-red-500" onClick={(e) => { e.stopPropagation(); onDeleteFile?.(file.id); }}>
+                    <Trash2 size={12} />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+          {!isRenaming && (
+            <p className="text-xs text-[var(--color-text-secondary)] line-clamp-3 leading-relaxed mb-3">
+              {file.type === 'note'
+                ? stripHtml(file.content || '').substring(0, 200)
+                : `${file.elements?.nodes?.length || 0} nodes · ${file.elements?.strokes?.length || 0} strokes`
+              }
+            </p>
+          )}
+        </CardContent>
+        {!isRenaming && (
+          <CardFooter className="px-4 pb-4 pt-0">
+            <div className="flex items-center gap-2 text-[11px] text-[var(--color-text-muted)]">
+              <span className={`w-2 h-2 rounded-full ${file.type === 'note' ? 'bg-[var(--color-note)]' : 'bg-[var(--color-canvas)]'}`} />
+              <span>{formatRelativeTime(file.updatedAt)}</span>
+              {file.tags && file.tags.length > 0 && <span className="truncate">· {file.tags.slice(0, 2).join(', ')}</span>}
+            </div>
+          </CardFooter>
+        )}
+      </Card>
+    );
+  };
 
   return (
     <div className="h-full flex flex-col bg-[var(--color-bg-secondary)]">
@@ -189,39 +199,23 @@ export function Browser({
           <img src={boardsNoteLogo} alt="BoardsNote" className="h-7 w-auto" />
         </div>
 
-        <div className="inline-flex items-center p-0.5 rounded-full bg-[var(--color-bg-tertiary)] justify-self-center">
-          <button
-            className={`px-3 py-1 text-[13px] font-medium rounded-full transition-colors ${
-              activeMode === 'notes'
-                ? 'bg-[var(--color-bg-primary)] text-[var(--color-note)] shadow-sm'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
-            }`}
-            onClick={() => onModeChange('notes')}
-          >
-            Notes
-          </button>
-          <button
-            className={`px-3 py-1 text-[13px] font-medium rounded-full transition-colors ${
-              activeMode === 'canvas'
-                ? 'bg-[var(--color-bg-primary)] text-[var(--color-canvas)] shadow-sm'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
-            }`}
-            onClick={() => onModeChange('canvas')}
-          >
-            Canvas
-          </button>
-        </div>
+        <Tabs value={activeMode} onValueChange={(v) => onModeChange(v as 'notes' | 'canvas')} className="justify-self-center">
+          <TabsList className="h-8">
+            <TabsTrigger value="notes" className="text-[13px] px-3 py-1 data-[state=active]:text-[var(--color-note)]">Notes</TabsTrigger>
+            <TabsTrigger value="canvas" className="text-[13px] px-3 py-1 data-[state=active]:text-[var(--color-canvas)]">Canvas</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         <div className="flex items-center gap-1 justify-self-end">
-          <button className="p-2 hover:bg-[var(--color-bg-tertiary)] rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors" onClick={onOpenSearch} title="Search (Cmd K)">
+          <Button variant="ghost" size="icon" onClick={onOpenSearch} title="Search (Cmd K)">
             <Search size={18} />
-          </button>
-          <button className="p-2 hover:bg-[var(--color-bg-tertiary)] rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors" onClick={onThemeToggle} title="Toggle Theme">
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onThemeToggle} title="Toggle Theme">
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-          <button className="p-2 hover:bg-[var(--color-bg-tertiary)] rounded-[var(--radius-tiny)] text-[var(--color-text-secondary)] transition-colors" onClick={onOpenSettings} title="Settings">
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onOpenSettings} title="Settings">
             <Settings size={18} />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -232,9 +226,9 @@ export function Browser({
             {(hasPinned || hasRecent) && <span className="text-sm text-[var(--color-text-muted)]">({modeFiles.length})</span>}
           </div>
           {(hasPinned || hasRecent) && (
-            <button className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium rounded-[var(--radius-tiny)] border border-[var(--color-border)] text-[var(--brand)] hover:bg-[var(--brand-subtle)] transition-colors" onClick={onCreateFile}>
+            <Button variant="outline" onClick={onCreateFile} className="flex items-center gap-1.5">
               <Plus size={14} />{activeMode === 'notes' ? 'New Note' : 'New Board'}
-            </button>
+            </Button>
           )}
         </div>
 
@@ -271,12 +265,12 @@ export function Browser({
               <h2 className="text-xl font-semibold text-[var(--color-text-primary)] leading-tight mb-2">Notes and canvas. Nothing more, nothing less.</h2>
               <p className="text-sm text-[var(--color-text-secondary)] mb-6">Write something. Draw something. See what happens.</p>
               <div className="flex items-center gap-2">
-                <button className="px-4 py-2 text-[13px] font-medium rounded-[var(--radius-tiny)] bg-[var(--brand)] text-white hover:brightness-110 transition-all" onClick={onCreateFile}>
+                <Button onClick={onCreateFile}>
                   {activeMode === 'notes' ? 'Start writing' : 'Start drawing'}
-                </button>
-                <button className="px-4 py-2 text-[13px] font-medium rounded-[var(--radius-tiny)] border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors" onClick={handleSecondaryAction}>
+                </Button>
+                <Button variant="outline" onClick={handleSecondaryAction}>
                   {activeMode === 'notes' ? 'Start drawing' : 'Start writing'}
-                </button>
+                </Button>
               </div>
               <p className="text-xs text-[var(--color-text-muted)] mt-4">
                 <kbd className="px-1.5 py-0.5 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded text-[11px] font-mono">N</kbd> for a new note · <kbd className="px-1.5 py-0.5 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded text-[11px] font-mono">C</kbd> for a new canvas
@@ -307,37 +301,6 @@ export function Browser({
           </div>
         )}
       </div>
-
-      {/* Dropdown portal */}
-      {currentMenuFile && anchorId && menuAnchor && createPortal(
-        <div
-          className="file-menu-dropdown fixed z-[100] w-36 bg-[var(--color-shell-bg)] border border-[var(--color-border)] rounded-lg shadow-xl py-1"
-          style={{ top: menuAnchor.top, left: menuAnchor.left }}
-        >
-          <button
-            className="w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 hover:bg-[var(--color-surface-hover)] transition-colors"
-            onClick={(e) => { e.stopPropagation(); onTogglePin?.(currentMenuFile.id); setMenuAnchor(null); }}
-          >
-            <Star size={12} className={currentMenuFile.isPinned ? 'text-amber-500 fill-current' : 'text-[var(--color-text-muted)]'} />
-            <span className="text-[var(--color-text-primary)]">{currentMenuFile.isPinned ? 'Unfavourite' : 'Favourite'}</span>
-          </button>
-          <button
-            className="w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 hover:bg-[var(--color-surface-hover)] transition-colors"
-            onClick={(e) => { e.stopPropagation(); handleRenameStart(currentMenuFile); }}
-          >
-            <Edit2 size={12} className="text-[var(--color-text-muted)]" />
-            <span className="text-[var(--color-text-primary)]">Rename</span>
-          </button>
-          <button
-            className="w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 hover:bg-red-500/10 transition-colors"
-            onClick={(e) => { e.stopPropagation(); onDeleteFile?.(currentMenuFile.id); setMenuAnchor(null); }}
-          >
-            <Trash2 size={12} className="text-red-500" />
-            <span className="text-red-500">Delete</span>
-          </button>
-        </div>,
-        document.body
-      )}
     </div>
   );
 }

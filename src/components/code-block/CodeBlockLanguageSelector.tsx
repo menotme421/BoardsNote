@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { ChevronDown, Search } from 'lucide-react';
 import { LANGUAGES } from './languageRegistry';
+import { Button } from '@/components/ui/button';
 
 interface CodeBlockLanguageSelectorProps {
   currentLanguage: string;
@@ -64,14 +65,15 @@ export const CodeBlockLanguageSelector: React.FC<CodeBlockLanguageSelectorProps>
   return (
     <div ref={containerRef} className="code-block-language-selector" onKeyDown={handleKeyDown}>
       {/* Language label / trigger */}
-      <button
+      <Button
         onClick={() => setIsOpen(!isOpen)}
         className="code-block-language-label"
-        type="button"
+        variant="ghost"
+        size="sm"
       >
         <span>{displayLabel}</span>
         <ChevronDown size={12} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
+      </Button>
 
       {/* Dropdown panel */}
       {isOpen && (
@@ -95,17 +97,18 @@ export const CodeBlockLanguageSelector: React.FC<CodeBlockLanguageSelectorProps>
               <div className="code-block-language-empty">No languages found</div>
             ) : (
               filteredLanguages.map((language) => (
-                <button
+                <Button
                   key={language}
                   onClick={() => handleSelect(language)}
                   className={`code-block-language-item ${language === currentLanguage ? 'active' : ''}`}
-                  type="button"
+                  variant="ghost"
+                  size="sm"
                 >
                   <span className="language-name">{language}</span>
                   {language === currentLanguage && (
                     <span className="check-indicator">✓</span>
                   )}
-                </button>
+                </Button>
               ))
             )}
           </div>
